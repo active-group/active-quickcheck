@@ -364,10 +364,15 @@
 
 (defmacro property
   [clauses body0 & bodies]
-  `(Property. (fn [~@(map first clauses)]
-                ~body0 ~@bodies)
-              '~(map first clauses)
-              (list ~@(map second clauses))))
+  (when (odd? (count clauses))
+    (throw (Exception. "Odd number of elements in property bindings.")))
+  (let [pairs (partition 2 clauses)
+        ids (map first pairs)
+        rhss (map second pairs)]
+    `(Property. (fn [~@ids]
+                  ~body0 ~@bodies)
+                '~ids
+                (list ~@rhss))))
 
 (defrecord Check-result
     [

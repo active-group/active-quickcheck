@@ -11,7 +11,7 @@
   (testing "trivial property"
     (is
      (check-quick
-      (property ((x arbitrary-integer))
+      (property [x arbitrary-integer]
                 (= x x))))))
 
 (deftest trivial-not-ok
@@ -19,7 +19,7 @@
     (is
      (not
       (check-quick
-       (property ((x arbitrary-integer))
+       (property [x arbitrary-integer]
                  (not= x x)))))))
 
 (deftest trivial-sometimes-ok
@@ -27,15 +27,15 @@
     (is
      (not
       (check-quick
-       (property ((x arbitrary-integer))
+       (property [x arbitrary-integer]
                  (< x 5)))))))
 
 (deftest reverse-distributes-over-concat
   (testing "reverse distributes over concat"
     (is
      (check-quick
-      (property ((xs (arbitrary-list arbitrary-integer))
-                 (ys (arbitrary-list arbitrary-integer)))
+      (property [xs (arbitrary-list arbitrary-integer)
+                 ys (arbitrary-list arbitrary-integer)]
                 (= (reverse (concat xs ys)) (concat (reverse ys) (reverse xs))))))))
 
 (deftest reverse-distributes-over-concat-broken
@@ -43,6 +43,6 @@
     (is
      (not
       (check-quick
-       (property ((xs (arbitrary-list arbitrary-integer))
-                  (ys (arbitrary-list arbitrary-integer)))
+       (property [xs (arbitrary-list arbitrary-integer)
+                  ys (arbitrary-list arbitrary-integer)]
                  (= (reverse (concat ys xs)) (concat (reverse ys) (reverse xs)))))))))
