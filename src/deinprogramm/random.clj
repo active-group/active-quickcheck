@@ -80,7 +80,7 @@
           (let [[x rgn] (random-generator-next rg)]
             (recur (- n 1) (+ x (* acc b)) rgn))))))
 
-(defn random-real 
+(defn random-float
   [rg low high]
   (let [[x nrg] (random-integer rg min-bound max-bound)]
     (let [scaled-x (+ (/ (+ low high) 2)
