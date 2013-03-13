@@ -1,8 +1,8 @@
 (ns deinprogramm.quickcheck
   (:use deinprogramm.random)
   (:use clojure.math.numeric-tower)
-  (:use clojure.algo.monads))
-
+  (:use clojure.algo.monads)
+  (:use [clojure.test :only [assert-expr do-report]]))
 
 (defrecord Generator
     ;; int(size) random-generator -> val
@@ -545,12 +545,12 @@
   (case maybe-result
     true (done "OK, passed" ntest stamps)
     false (done "Arguments exhausted after" ntest stamps)
-    :else
-     (print "Falsifiable, after ")
-     (print ntest)
-     (println " tests:")
-     (doseq [a (:arguments-list maybe-result)]
-      (write-arguments a))))
+    (do
+      (print "Falsifiable, after ")
+      (print ntest)
+      (println " tests:")
+      (doseq [a (:arguments-list maybe-result)]
+        (write-arguments a)))))
 
 ; (pair (union nil symbol) value)
 (defn write-argument
@@ -629,10 +629,20 @@
       (= c 0) (stamp<? (rest s1) (rest s2))
       :else false))))
 
-
-
- 
-
-
-    
-    
+(defmethod assert-expr 'quickcheck [msg form]
+  ;; (is (quickcheck prop))
+  ;; Asserts that the property passes the QuickCheck tests
+  (let [prop (second form)]
+    `(let [prop-sexpr# '~prop
+           prop# ~prop
+           [ntests# stamps# success#] (quickcheck-results prop#)]
+       (case success#
+         true (do-report {:type :pass, :message ~msg,
+                          :expected prop-sexpr#})
+         false (do-report {:type :fail, 
+                           :message (str "Arguments exhausted after " ntests# " tries"),
+                           :expected prop-sexpr#, :actual false})
+         (do-report {:type :fail,
+                     :message (str "falsifiable")
+                     :expected prop-sexpr#
+                     :actual (:arguments-list success#)})))))
