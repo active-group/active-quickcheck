@@ -1,13 +1,21 @@
 # clojure-duh
 
-A Clojure library designed to ... well, that part is up to you.
+A Clojure port of the original Haskell QuickCheck.
 
 ## Usage
 
-FIXME
+<pre>
+(deftest reverse-distributes-over-concat
+  (testing "reverse distributes over concat"
+    (is
+     (quickcheck
+      (property [xs (arbitrary-list arbitrary-integer)
+                 ys (arbitrary-list arbitrary-integer)]
+                (= (reverse (concat xs ys)) (concat (reverse ys) (reverse xs))))))))
+</pre>
 
 ## License
 
-Copyright © 2013 FIXME
+Copyright © 2013 Michael Sperber
 
 Distributed under the Eclipse Public License, the same as Clojure.
