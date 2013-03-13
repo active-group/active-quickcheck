@@ -451,24 +451,15 @@ saying whether the property is satisfied."
      ;; (list (list (pair (union #f symbol) value)))
      arguments-list])
 
-(defn- result-with-ok
-  [res ok]
-  (Check-result. ok
-           (:stamp res)
-           (:argument-list res)))
-
 (defn- result-add-stamp
   [res stamp]
-  (Check-result. (:ok res)
-           (conj stamp (:stamp res))
-           (:arguments-list res)))
+  (assoc res :stamp (conj stamp (:stamp res))))
 
 ; result (list (pair (union #f symbol) value)) -> result
 (defn- result-add-arguments
   [res args]
-  (Check-result. (:ok res)
-           (:stamp res)
-           (conj (:arguments-list res) args)))
+  (assoc res :arguments-list
+         (conj (:arguments-list res) args)))
 
 (def ^:private nothing
   (Check-result. nil [] []))
@@ -487,7 +478,7 @@ saying whether the property is satisfied."
   (cond
    (instance? Property thing) (for-all-with-names (:func thing) (:arg-names thing)
                                 (:args thing))
-   (instance? Boolean thing) (return (result-with-ok nothing thing))
+   (instance? Boolean thing) (return (assoc nothing :ok thing))
    (instance? Check-result thing) (return thing)
    (instance? Generator thing) thing
    :else (throw (Error. (str "cannot be coerced to a result generator: " (.toString thing))))))
@@ -531,7 +522,6 @@ saying whether the property is satisfied."
   (domonad generator-m
            [res (coerce->result-generator testable)]
            (result-add-stamp res str)))
-
 
 (defmacro classify
   "Classify some test cases of a testable."
