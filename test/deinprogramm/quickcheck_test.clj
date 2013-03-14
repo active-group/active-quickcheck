@@ -120,3 +120,19 @@
       (property [x (arbitrary-mixed (list (list integer? (delay arbitrary-integer))
                                           (list string? (delay arbitrary-string))))]
                 (or (integer? x) (string? x)))))))
+
+
+(deftest one-of
+  "arbitrary-one-of works"
+  (is
+   (quickcheck
+    (property [x (arbitrary-one-of = "foo" "bar" "baz")]
+              (contains? #{"foo" "bar" "baz"} x)))))
+
+(deftest listq
+  "arbitrary-list works"
+  (is
+   (quickcheck
+    (property [x (arbitrary-list arbitrary-integer)]
+              (and (list? x)
+                   (every? integer? x))))))
