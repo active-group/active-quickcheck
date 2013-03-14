@@ -7,14 +7,14 @@
   (let [[ntests stamps success] (quickcheck-results prop)]
     success))
 
-(deftest trivial-ok
+(deftest ok
   (testing "trivial property"
     (is
      (quickcheck
       (property [x arbitrary-integer]
                 (= x x))))))
 
-(deftest trivial-not-ok
+(deftest not-ok
   (testing "trivial property"
     (is
      (not= true
@@ -22,7 +22,7 @@
             (property [x arbitrary-integer]
                       (not= x x)))))))
 
-(deftest trivial-sometimes-ok
+(deftest sometimes-ok
   (testing "trivial property"
     (is
      (not= true
@@ -240,3 +240,85 @@
                 (and (function? proc)
                      (integer? (proc "foo"))))))))
 
+(deftest vector-function
+  (testing "creating a function nat -> int works"
+    (is
+     (quickcheck
+      (property [proc (arbitrary-function arbitrary-integer (arbitrary-vector arbitrary-integer))]
+                (and (function? proc)
+                     (integer? (proc [15 13]))))))))
+
+(deftest function-function
+  (testing "creating a function function -> int works"
+    (is
+      (quickcheck
+       (property [proc (arbitrary-function arbitrary-integer
+                                           (arbitrary-function arbitrary-boolean arbitrary-char))]
+                 (and (function? proc)
+                      (integer? (proc #(= % \A)))))))))
+
+(deftest ==>q
+  (testing "==> works"
+    (is
+     (quickcheck
+      (property [x arbitrary-integer]
+                (==> (even? x)
+                     (integer? (/ x 2))))))))
+
+(deftest labelq
+  (testing "label works"
+    (is
+     (let [[ntests stamps success]
+           (quickcheck-results (property [x arbitrary-integer]
+                                         (label "yo" (integer? x))))]
+       (and (true? success)
+            (every? (fn [el]
+                      (= '("yo")))
+                    stamps))))))
+
+(deftest classifyq
+  (testing "classify works"
+    (is
+     (let [[ntests stamps success]
+           (quickcheck-results (property [x arbitrary-integer]
+                                         (classify (even? x) "even" (integer? x))))]
+       (and (true? success)
+            (every? (fn [el]
+                      (or (= el [])
+                          (= el ["even"])))
+                    stamps))))))
+
+(deftest trivialq
+  (testing "trivial works"
+    (is
+     (let [[ntests stamps success]
+           (quickcheck-results  (property [x arbitrary-integer]
+                                          (trivial (even? x) (integer? x))))]
+       (and (true? success)
+            (every? (fn [el]
+                      (or (= el [])
+                          (= el ["trivial"])))
+                    stamps))))))
+
+(defrecord Foo [bar baz])
+
+(deftest recordq
+  (testing "arbitrary-record works"
+    (is
+     (quickcheck
+      (property [x (arbitrary-record ->Foo
+                                     (list :bar :baz)
+                                     arbitrary-integer
+                                     arbitrary-string)]
+                (and (instance? Foo x) (integer? (:bar x)) (string? (:baz x))))))))
+
+(deftest record2
+  (testing "arbitrary-record works"
+    (is
+      (quickcheck 
+       (property [proc (arbitrary-function arbitrary-integer
+                                           (arbitrary-record ->Foo
+                                                             (list :bar :baz)
+                                                             arbitrary-integer
+                                                             arbitrary-string))]
+                 (integer? (proc (Foo. 47 "foo"))))))))

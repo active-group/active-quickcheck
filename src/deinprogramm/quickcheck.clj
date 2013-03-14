@@ -351,7 +351,7 @@
                              (recurse (rest arbitrary-els) (rest lis)))
                             gen))]
                   (recurse arbitrary-els
-                           (map (fn [acccessor] (accessor rec)) accessors))))))
+                           (map #(% rec) accessors))))))
 
 (defn arbitrary-sequence-like
   "Arbitrary sequence-like container."
@@ -453,7 +453,7 @@ saying whether the property is satisfied."
 
 (defn- result-add-stamp
   [res stamp]
-  (assoc res :stamp (conj stamp (:stamp res))))
+  (assoc res :stamp (conj (:stamp res) stamp)))
 
 ; result (list (pair (union #f symbol) value)) -> result
 (defn- result-add-arguments
@@ -461,7 +461,7 @@ saying whether the property is satisfied."
   (assoc res :arguments-list
          (conj (:arguments-list res) args)))
 
-(def ^:private nothing
+(def nothing
   (Check-result. nil [] []))
 
 
@@ -513,7 +513,7 @@ saying whether the property is satisfied."
   "Create a property that only has to hold when its prerequisite holds."
   [?bool ?prop]
   `(if ~?bool
-     ?prop
+     ~?prop
      (return nothing)))
 
 (defn label
