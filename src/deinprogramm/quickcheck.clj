@@ -293,7 +293,7 @@
                                (:generator arbitrary-integer)
                                (:generator arbitrary-integer))
               (fn [r gen]
-                (let [fr (rationalize r 1/1000)]
+                (let [fr (rationalize r)]
                   (coarbitrary arbitrary-integer
                                (.numerator fr)
                                (coarbitrary arbitrary-integer
@@ -328,7 +328,6 @@
                     (eql? (first lis) val) (variant n gen)
                     :else (recur (rest lis) (+ 1 n)))))))
 
-; a tuple is just a non-uniform sequence
 (defn arbitrary-tuple
   "Arbitrary fixed-size vector."
   [& arbitrary-els]
@@ -359,7 +358,7 @@
                              (recurse (rest arbitrary-els) (rest lis)))
                             gen))]
                   (recurse arbitrary-els
-                           (map (fn [acccessor] (accessor rec)) accessors))))))
+                           (map #(% rec) accessors))))))
 
 (defn arbitrary-sequence-like
   "Arbitrary sequence-like container."
@@ -403,7 +402,7 @@
 (def arbitrary-symbol
   "Arbitrary symbol."
   (arbitrary-sequence-like choose-symbol
-                           #(into () (str symbol))
+                           #(into () (str %))
                            arbitrary-ascii-letter))
 
 (def arbitrary-keyword
@@ -411,7 +410,7 @@
 
 (defn arbitrary-function
   "Arbitrary function."
-  [arbitrary-result % arbitrary-args]
+  [arbitrary-result & arbitrary-args]
   (let [arbitrary-arg-tuple (apply arbitrary-tuple arbitrary-args)]
     (Arbitrary. (promote
                  (fn [& args]
@@ -464,7 +463,7 @@ saying whether the property is satisfied."
 
 (defn- result-add-stamp
   [res stamp]
-  (assoc res :stamp (conj stamp (:stamp res))))
+  (assoc res :stamp (conj (:stamp res) stamp)))
 
 ; result (list (pair (union #f symbol) value)) -> result
 (defn- result-add-arguments
@@ -472,7 +471,7 @@ saying whether the property is satisfied."
   (assoc res :arguments-list
          (conj (:arguments-list res) args)))
 
-(def ^:private nothing
+(def nothing
   (Check-result. nil [] []))
 
 
@@ -524,7 +523,7 @@ saying whether the property is satisfied."
   "Create a property that only has to hold when its prerequisite holds."
   [?bool ?prop]
   `(if ~?bool
-     ?prop
+     ~?prop
      (return nothing)))
 
 (defn label
