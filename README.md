@@ -15,6 +15,6 @@ A Clojure port of the original Haskell QuickCheck.
 
 ## License
 
-Copyright © 2013 Michael Sperber
+Copyright © 2013 Michael Sperber, David Frese
 
 Distributed under the Eclipse Public License, the same as Clojure.
