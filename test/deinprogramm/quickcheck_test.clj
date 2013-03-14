@@ -145,6 +145,15 @@
                 (and (vector? x)
                      (every? integer? x)))))))
 
+(deftest mapq
+  (testing "arbitrary-map works"
+    (is
+     (quickcheck
+      (property [x (arbitrary-map arbitrary-integer arbitrary-string)]
+                (and (map? x)
+                     (every? integer? (keys x))
+                     (every? string? (vals x))))))))
+
 (deftest boolean-function
   (testing "creating a function bool -> int works"
     (is
