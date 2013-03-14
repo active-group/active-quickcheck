@@ -115,7 +115,7 @@
 ; (vals -> (generator b)) -> (generator (vals -> b))
 (defn promote
   "Promote a function to generators to a generator of functions."
-  [func]
+  [func] 
   (Generator.
    (fn [size rgen]
      (fn [& vals]
@@ -135,7 +135,7 @@
 (defn choose-one-of
   "Make a generator that yields one of a list of values."
   [lis]
-  (lift->generator #(get lis %)
+  (lift->generator #(nth lis %)
                    (choose-integer 0 (- (count lis) 1))))
 
 ; vector from the paper
@@ -292,17 +292,18 @@
                                (coarbitrary arbitrary-integer
                                             (.denominator fr) gen))))))
 
+(declare coerce->generator)
+
 (defn arbitrary-mixed
   "Arbitrary value from one of a list of (promises of) arbitraries."
   [pred+arbitrary-promise-list]
-  (Arbitrary. (choose-mixed (map (fn [p]
-                                   (delay (:generator (force (second p)))))
+  (Arbitrary. (choose-mixed (map #(delay (coerce->generator (force (second %))))
                                  pred+arbitrary-promise-list))
               (fn [val gen]
                 (loop [lis pred+arbitrary-promise-list
                        n 0]
                    (cond
-                    (not (seq lis)) (throw (Error. "arbitrary-mixed:value matches none of the predicates"))
+                    (not (seq lis)) (throw (Error. "arbitrary-mixed: value matches none of the predicates"))
                     ((first (first lis)) val) (variant n gen)
                     :else (recur (rest lis) (+ 1 n)))))))
 
@@ -316,7 +317,7 @@
                 (loop [lis vals
                        n 0]
                    (cond
-                    (not (seq lis)) (throw (Error. "arbitrary-mixed:value matches none of the predicates"))
+                    (not (seq lis)) (throw (Error. "arbitrary-one-of: value matches none of the predicates"))
                     (eql? (first lis) val) (variant n gen)
                     :else (recur (rest lis) (+ 1 n)))))))
 
@@ -380,11 +381,11 @@
   [arbitrary-el]
   (arbitrary-sequence-like choose-vector #(into () %) arbitrary-el))
 
-(def arbitary-ascii-string
+(def arbitrary-ascii-string
   "Arbitrary string of ASCII characters."
   (arbitrary-sequence-like choose-string #(into () %) arbitrary-ascii-char))
 
-(def arbitary-printable-ascii-string
+(def arbitrary-printable-ascii-string
   "Arbitrary string of printable ASCII characters."
   (arbitrary-sequence-like choose-string #(into () %) arbitrary-printable-ascii-char))
 
