@@ -98,6 +98,13 @@
       (property [x arbitrary-symbol]
                 (symbol? x))))))
 
+(deftest keywordq
+  (testing "arbitrary-keyword generates only keywords."
+    (is
+     (quickcheck
+      (property [x arbitrary-keyword]
+                (keyword? x))))))
+
 (deftest ascii-string
   (testing "arbitrary-ascii-string generates only ASCII strings"
     (is

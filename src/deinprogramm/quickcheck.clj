@@ -165,6 +165,13 @@
            [s (choose-string char-gen n)]
            (symbol s)))
 
+(defn choose-keyword
+  "Generator for a keyword with size n."
+  [char-gen n]
+  (domonad generator-m
+           [s (choose-symbol char-gen n)]
+           (keyword s)))
+
 (defn choose-vector
   "Generator for a vector with size n."
   [el-gen n]
@@ -398,6 +405,9 @@
   (arbitrary-sequence-like choose-symbol
                            #(into () (str symbol))
                            arbitrary-ascii-letter))
+
+(def arbitrary-keyword
+  (arbitrary-sequence-like choose-keyword #(into () (name %)) arbitrary-ascii-letter))
 
 (defn arbitrary-function
   "Arbitrary function."
