@@ -237,7 +237,7 @@
                      (integer? (proc 'foo))))))))
 
 (deftest mixed-function
-  (testing "creating a function nat -> int works"
+  (testing "creating a function mixed -> int works"
     (is
      (quickcheck
       (property [proc (arbitrary-function arbitrary-integer
@@ -248,7 +248,7 @@
                      (integer? (proc "foo"))))))))
 
 (deftest one-of-function
-  (testing "creating a function nat -> int works"
+  (testing "creating a function one-of -> int works"
     (is
      (quickcheck
       (property [proc (arbitrary-function arbitrary-integer
@@ -257,12 +257,20 @@
                      (integer? (proc "foo"))))))))
 
 (deftest vector-function
-  (testing "creating a function nat -> int works"
+  (testing "creating a function [int] -> int works"
     (is
      (quickcheck
       (property [proc (arbitrary-function arbitrary-integer (arbitrary-vector arbitrary-integer))]
                 (and (function? proc)
                      (integer? (proc [15 13]))))))))
+
+(deftest map-function
+  (testing "creating a function {:kw, int} -> int works"
+    (is
+     (quickcheck
+      (property [proc (arbitrary-function arbitrary-integer (arbitrary-map arbitrary-keyword arbitrary-integer))]
+                (and (function? proc)
+                     (integer? (proc {:b 0 :a 42}))))))))
 
 (deftest function-function
   (testing "creating a function function -> int works"
