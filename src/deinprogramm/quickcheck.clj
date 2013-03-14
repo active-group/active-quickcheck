@@ -629,7 +629,7 @@ returns three values:
          stamps stamps]
     (cond
      (= ntest (:max-test config)) (list ntest stamps true)
-     (= ntest (:max-fail config)) (list ntest stamps false)
+     (= nfail (:max-fail config)) (list nfail stamps false)
      :else
      (let [[rgen1 rgen2] (random-generator-split rgen)
            result (generate ((:size config) ntest) rgen2 gen)]
