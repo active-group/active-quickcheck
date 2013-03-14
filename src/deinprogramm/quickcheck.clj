@@ -149,7 +149,7 @@
               (domonad generator-m
                        [val el-gen
                         rest (recurse (- n 1))]
-                       (cons val rest))))]
+                       (conj rest val))))]
     (recurse n)))
 
 ; (generator char) int -> (generator string)
@@ -500,7 +500,7 @@ saying whether the property is satisfied."
            [args (m-seq (map coerce->generator args))
             res (coerce->result-generator (apply func args))]
            (result-add-arguments res
-                                 (map #(cons nil %) args))))
+                                 (map #(conj % nil) args))))
 
 (defn for-all-with-names
   "Bind names to generated values, supplying informative names."
