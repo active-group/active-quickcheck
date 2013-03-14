@@ -48,7 +48,7 @@
                       (= (reverse (concat ys xs)) (concat (reverse ys) (reverse xs)))))))))
 
 (deftest natural
-  (testing "natural generates only natural numbers"
+  (testing "arbitrary-natural generates only natural numbers"
     (is
      (quickcheck
       (property [x arbitrary-natural]
@@ -56,28 +56,28 @@
                      (>= x 0)))))))
 
 (deftest rational
-  (testing "rational generates only rational numbers"
+  (testing "arbitrary-rational generates only rational numbers"
     (is
      (quickcheck
       (property [x arbitrary-rational]
                 (rational? x))))))
 
 (deftest floatq
-  (testing "float generates only floats"
+  (testing "arbitrary-float generates only floats"
     (is
      (quickcheck
       (property [x arbitrary-float]
                 (float? x))))))
 
 (deftest charq
-  (testing "char generates only chars"
+  (testing "arbitrary-char generates only chars"
     (is
      (quickcheck
       (property [x arbitrary-char]
                 (char? x))))))
 
 (deftest ascii-char
-  (testing "ascii-char generates only ASCII chars."
+  (testing "arbitrary-ascii-char generates only ASCII chars."
     (is
      (quickcheck
       (property [x arbitrary-ascii-char]
@@ -85,21 +85,21 @@
                      (< (int x) 128)))))))
 
 (deftest stringq
-  (testing "string generates only strings."
+  (testing "arbitrary-string generates only strings."
     (is
      (quickcheck
       (property [x arbitrary-string]
                 (string? x))))))
 
 (deftest symbolq
-  (testing "symbol generates only symbols."
+  (testing "arbitrary-symbol generates only symbols."
     (is
      (quickcheck
       (property [x arbitrary-symbol]
                 (symbol? x))))))
 
 (deftest ascii-string
-  (testing "ascii-string generates only ASCII strings"
+  (testing "arbitrary-ascii-string generates only ASCII strings"
     (is
      (quickcheck
       (property [x arbitrary-ascii-string]
@@ -107,7 +107,7 @@
                      (every? #(< (int %) 128) x)))))))
 
 (deftest mixed
-  (testing "mixed works"
+  (testing "arbitrary-mixed works"
     (is
      (quickcheck
       (property [x (arbitrary-mixed (list (list integer? (delay arbitrary-integer))
