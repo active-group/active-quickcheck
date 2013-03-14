@@ -286,7 +286,7 @@
                                (:generator arbitrary-integer)
                                (:generator arbitrary-integer))
               (fn [r gen]
-                (let [fr (rationalize r 1/1000)]
+                (let [fr (rationalize r)]
                   (coarbitrary arbitrary-integer
                                (.numerator fr)
                                (coarbitrary arbitrary-integer
@@ -321,7 +321,6 @@
                     (eql? (first lis) val) (variant n gen)
                     :else (recur (rest lis) (+ 1 n)))))))
 
-; a tuple is just a non-uniform sequence
 (defn arbitrary-tuple
   "Arbitrary fixed-size vector."
   [& arbitrary-els]
@@ -396,12 +395,12 @@
 (def arbitrary-symbol
   "Arbitrary symbol."
   (arbitrary-sequence-like choose-symbol
-                           #(into () (str symbol))
+                           #(into () (str %))
                            arbitrary-ascii-letter))
 
 (defn arbitrary-function
   "Arbitrary function."
-  [arbitrary-result % arbitrary-args]
+  [arbitrary-result & arbitrary-args]
   (let [arbitrary-arg-tuple (apply arbitrary-tuple arbitrary-args)]
     (Arbitrary. (promote
                  (fn [& args]
