@@ -151,6 +151,15 @@
                 (and (vector? x)
                      (every? integer? x)))))))
 
+(deftest mapq
+  (testing "arbitrary-map works"
+    (is
+     (quickcheck
+      (property [x ~(arbitrary-map arbitrary-integer arbitrary-string)]
+                (and (map? x)
+                     (every? integer? (keys x))
+                     (every? string? (vals x))))))))
+
 (deftest boolean-function
   (testing "creating a function bool -> int works"
     (is
@@ -253,12 +262,20 @@
                      (integer? (proc "foo"))))))))
 
 (deftest vector-function
-  (testing "creating a function nat -> int works"
+  (testing "creating a function [int] -> int works"
     (is
      (quickcheck
       (property [proc ((vector integer) -> integer)]
                 (and (function? proc)
                      (integer? (proc [15 13]))))))))
+
+(deftest map-function
+  (testing "creating a function {:kw, int} -> int works"
+    (is
+     (quickcheck
+      (property [proc (~(arbitrary-map arbitrary-keyword arbitrary-integer) -> integer)]
+                (and (function? proc)
+                     (integer? (proc {:b 0 :a 42}))))))))
 
 (deftest function-function
   (testing "creating a function function -> int works"

@@ -177,6 +177,16 @@
   [el-gen n]
   (lift->generator vec (choose-list el-gen n)))
 
+(defn- array-map-of-tuples
+  [tups]
+  (reduce (fn [m [k v]] (assoc m k v)) (array-map) tups))
+
+(defn choose-map
+  "Generator for a map with size n. The passed element generator must
+  generate key-value pairs."
+  [el-gen n]
+  (lift->generator array-map-of-tuples (choose-list el-gen n)))
+
 ; (list (promise (generator a))) -> (generator a)
 (defn choose-mixed
   "Generator that chooses from a sequence of generators."
@@ -386,6 +396,11 @@
   "Arbitrary vector."
   [arbitrary-el]
   (arbitrary-sequence-like choose-vector #(into () %) arbitrary-el))
+
+(defn arbitrary-map
+  "Arbitrary map over the given arbitrary key and value."
+  [arbitrary-key arbitrary-value]
+  (arbitrary-sequence-like choose-map #(into () %) (arbitrary-tuple arbitrary-key arbitrary-value)))
 
 (def arbitrary-ascii-string
   "Arbitrary string of ASCII characters."
