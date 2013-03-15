@@ -1,6 +1,16 @@
-# clojure-duh
+# `deinprogramm.quickcheck`
 
 A Clojure port of the original Haskell QuickCheck.
+
+(We looked at
+[ClojureCheck](https://bitbucket.org/kotarak/clojurecheck) and
+[`clojure.test.generative`](https://github.com/clojure/test.generative),
+but neither seems faithful to the original, particularly concerning the
+reproducibility of test runs, and a set of generator combinators that
+includes random generation of functions.)
+
+This library, however, is a straighforward port of the Haskell code
+from John Hughes's original paper.
 
 ## Usage
 
