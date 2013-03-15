@@ -301,7 +301,7 @@
                                          (label "yo" (integer? x))))]
        (and (true? success)
             (every? (fn [el]
-                      (= '("yo")))
+                      (= el '("yo")))
                     stamps))))))
 
 (deftest classifyq
