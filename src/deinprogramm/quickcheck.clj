@@ -591,6 +591,7 @@ The argument form can be one of the following:
 - (tuple <arb> ...)
 - (list <arb>)
 - (vector <arb>)
+- (set <arb>)
 - (record <constructor> [<accessor> <arb> ...])
 - (mixed <pred> <arb> <pred> <arb> ...)
 - (map <arb1> <arb2>) ; map with keys from <arb1>, values from <arb2>
