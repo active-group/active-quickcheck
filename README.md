@@ -16,7 +16,7 @@ A Clojure port of the original Haskell QuickCheck.
 
 ### Use from `clojure.test`
 
-:::clojure
+	:::clojure
 	(deftest reverse-distributes-over-concat
 	  (testing "reverse distributes over concat"
 		(is
