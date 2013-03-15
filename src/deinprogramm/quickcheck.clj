@@ -593,6 +593,7 @@ The argument form can be one of the following:
 - (vector <arb>)
 - (record <constructor> [<accessor> <arb> ...])
 - (mixed <pred> <arb> <pred> <arb> ...)
+- (map <arb1> <arb2>) ; map with keys from <arb1>, values from <arb2>
 - ~<expr>, which evaluates <expr> as a regular expression
 
 The syntax is extensible via the expand-arbitrary multimethod."
