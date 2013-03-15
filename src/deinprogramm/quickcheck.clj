@@ -177,15 +177,20 @@
   [el-gen n]
   (lift->generator vec (choose-list el-gen n)))
 
-(defn- array-map-of-tuples
+(defn- map-of-tuples
   [tups]
-  (reduce (fn [m [k v]] (assoc m k v)) (array-map) tups))
+  (reduce (fn [m [k v]] (assoc m k v)) {} tups))
 
 (defn choose-map
   "Generator for a map with size n. The passed element generator must
   generate key-value pairs."
   [el-gen n]
-  (lift->generator array-map-of-tuples (choose-list el-gen n)))
+  (lift->generator map-of-tuples (choose-list el-gen n)))
+
+(defn choose-set
+  "Generator for a set with size <= n"
+  [el-gen n]
+  (lift->generator set (choose-list el-gen n)))
 
 ; (list (promise (generator a))) -> (generator a)
 (defn choose-mixed
@@ -402,6 +407,11 @@
   [arbitrary-key arbitrary-value]
   (arbitrary-sequence-like choose-map #(into () %) (arbitrary-tuple arbitrary-key arbitrary-value)))
 
+(defn arbitrary-set
+  "Arbitrary set."
+  [arbitrary-el]
+  (arbitrary-sequence-like choose-set #(into () %) arbitrary-el))
+
 (def arbitrary-ascii-string
   "Arbitrary string of ASCII characters."
   (arbitrary-sequence-like choose-string #(into () %) arbitrary-ascii-char))
@@ -543,6 +553,10 @@ the operator."
   (expand-has-arg-count form 2)
   `(arbitrary-map ~(expand-arbitrary (nth form 1))
                   ~(expand-arbitrary (nth form 2))))
+
+(defmethod expand-arbitrary '[set] [form]
+  (expand-has-arg-count form 1)
+  `(arbitrary-set ~(expand-arbitrary (nth form 1))))
 
 ; (record cons (acc ...) arb ...)
 (defmethod expand-arbitrary '[record] [form]

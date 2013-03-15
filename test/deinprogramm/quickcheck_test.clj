@@ -151,6 +151,14 @@
                 (and (vector? x)
                      (every? integer? x)))))))
 
+(deftest setq
+  (testing "arbitrary-set works"
+    (is
+     (quickcheck
+      (property [x (set integer)]
+                (and (set? x)
+                     (every? integer? x)))))))
+
 (deftest mapq
   (testing "arbitrary-map works"
     (is
@@ -268,6 +276,14 @@
       (property [proc ((vector integer) -> integer)]
                 (and (function? proc)
                      (integer? (proc [15 13]))))))))
+
+(deftest set-function
+  (testing "creating a function #{int} -> int works"
+    (is
+     (quickcheck
+      (property [proc ((set integer) -> integer)]
+                (and (function? proc)
+                     (integer? (proc #{15 13}))))))))
 
 (deftest map-function
   (testing "creating a function {:kw, int} -> int works"
