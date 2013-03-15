@@ -82,6 +82,37 @@
   "Generator for printable ASCII characters."
   (lift->generator char (choose-integer 32 127)))
 
+(defn- choose-char-with-property
+  [pred]
+  (Generator.
+   (fn [size rgen]
+     ;; loop until proper char is found; otherwise we could build a
+     ;; map of all chars, but that's not that good either.
+     (loop [rg rgen]
+       (let [[i ngen] (random-integer rg 0 0xffff)
+             c (char i)]
+         (if (pred c)
+           c
+           (recur ngen)))))))
+
+(def choose-non-numeric-char
+  (letfn [(is-non-numeric? [c]
+            (let [t (java.lang.Character/getType (int c))]
+              (or (= t java.lang.Character/UPPERCASE_LETTER)
+                  (= t java.lang.Character/LOWERCASE_LETTER))))]
+    (choose-char-with-property is-non-numeric?)))
+
+(def choose-alphanumeric-char
+  (letfn [(is-alphanumeric? [c]
+            (let [t (java.lang.Character/getType (int c))]
+              (or (= t java.lang.Character/UPPERCASE_LETTER)
+                  (= t java.lang.Character/LOWERCASE_LETTER)
+                  (= t java.lang.Character/DECIMAL_DIGIT_NUMBER)
+                  (= t java.lang.Character/LETTER_NUMBER)
+                  (= t java.lang.Character/OTHER_NUMBER)))
+            )]
+    (choose-char-with-property is-alphanumeric?)))
+
 (defn choose-char
   "Generator for chars within a range, bonds are inclusive."
   [lower upper]
@@ -158,18 +189,22 @@
   [char-gen n]
   (lift->generator #(apply str %) (choose-list char-gen n)))
 
+(declare choose-mixed)
 (defn choose-symbol
-  "Generator for a symbol with size n."
-  [char-gen n]
+  "Generator for a symbol with size n+1."
+  [n]
   (domonad generator-m
-           [s (choose-string char-gen n)]
-           (symbol s)))
+           [fst (choose-string choose-non-numeric-char 1)
+            rst (choose-string (choose-mixed (list choose-alphanumeric-char
+                                                   (choose-one-of (seq "*+!-_?"))))
+                               n)]
+           (symbol (str fst rst))))
 
 (defn choose-keyword
-  "Generator for a keyword with size n."
-  [char-gen n]
+  "Generator for a keyword with size n+1."
+  [n]
   (domonad generator-m
-           [s (choose-symbol char-gen n)]
+           [s (choose-symbol n)]
            (keyword s)))
 
 (defn choose-vector
@@ -253,31 +288,30 @@
               (fn [n gen]
                 (variant n gen))))
 
+(defn- arbitrary-int-like
+  [gen to-int]
+  (Arbitrary. gen
+              (fn [v rgen]
+                (variant (to-int v) rgen))))
+
 (def arbitrary-ascii-char
   "Arbitrary ASCII character."
-  (Arbitrary. choose-ascii-char
-              (fn [ch gen]
-                (variant (int ch) gen))))
+  (arbitrary-int-like choose-ascii-char int))
 
 (def arbitrary-ascii-letter
   "Arbitrary ASCII letter."
-  (Arbitrary. choose-ascii-letter
-              (fn [ch gen]
-                (variant (int ch) gen))))
+  (arbitrary-int-like choose-ascii-letter int))
 
 (def arbitrary-printable-ascii-char
   "Arbitrary printable ASCII character."
-  (Arbitrary. choose-printable-ascii-char
-              (fn [ch gen]
-                (variant (int ch) gen))))
+  (arbitrary-int-like choose-printable-ascii-char int))
 
 (def arbitrary-char
   "Arbitrary char."
-  (Arbitrary. (sized
-               (fn [n]
-                 (choose-char \u0000 \uffff)))
-              (fn [ch gen]
-		    (variant (int ch) gen))))
+  (arbitrary-int-like (sized
+                       (fn [n]
+                         (choose-char \u0000 (char (min n 0xffff)))))
+                      int))
 
 (defn- make-rational
   [a b]
@@ -328,8 +362,6 @@
                     (not (seq lis)) (throw (Error. "arbitrary-mixed: value matches none of the predicates"))
                     ((first (first lis)) val) (variant n gen)
                     :else (recur (rest lis) (+ 1 n)))))))
-
-
 
 (defn arbitrary-one-of
   "Arbitrary value from a list of values, and equality predicate."
@@ -424,14 +456,20 @@
   "Arbitrary string."
   (arbitrary-sequence-like choose-string #(into () %) arbitrary-char))
 
+(defn- arbitrary-symbol-like
+  [choose]
+  (Arbitrary.
+   (sized (fn [n] (choose n)))
+   (fn [v gen]
+     (coarbitrary arbitrary-string (name v) gen))))
+
 (def arbitrary-symbol
   "Arbitrary symbol."
-  (arbitrary-sequence-like choose-symbol
-                           #(into () (str %))
-                           arbitrary-ascii-letter))
+  (arbitrary-symbol-like choose-symbol))
 
 (def arbitrary-keyword
-  (arbitrary-sequence-like choose-keyword #(into () (name %)) arbitrary-ascii-letter))
+  "Arbitrary keyword."
+  (arbitrary-symbol-like choose-keyword))
 
 (defn arbitrary-function
   "Arbitrary function."

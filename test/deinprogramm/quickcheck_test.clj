@@ -105,12 +105,36 @@
       (property [x symbol]
                 (symbol? x))))))
 
+(defn valid-symbol-name?
+  [name]
+  ;; read-string knows the rules
+  (try
+    (= (keyword name) (read-string (str ":" name)))
+    (catch RuntimeException e
+      ;; EOF while reading, if not a proper s-expr
+      false)))
+
+(deftest symbol-valid
+  (testing "arbitrary-symbol generates valid symbols."
+    (is
+     (quickcheck
+      (property [x symbol]
+                (and (symbol? x) (valid-symbol-name? (name x))))))))
+
 (deftest keywordq
   (testing "arbitrary-keyword generates only keywords."
     (is
      (quickcheck
       (property [x keyword]
                 (keyword? x))))))
+
+(deftest keyword-valid
+  (testing "arbitrary-keyword generates valid keywords."
+    (is
+     (quickcheck
+      (property [x keyword]
+                ;; same rules as for symbols..
+                (and (keyword? x) (valid-symbol-name? (name x))))))))
 
 (deftest ascii-string
   (testing "arbitrary-ascii-string generates only ASCII strings"
