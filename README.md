@@ -12,6 +12,14 @@ includes random generation of functions.)
 This library, however, is a straighforward port of the Haskell code
 from John Hughes's original paper.
 
+## Releases and Dependency Information
+
+Latest stable release: 0.1.0
+
+[Leiningen](https://github.com/technomancy/leiningen) dependency information:
+
+    [de.deinprogramm/quickcheck "0.1.0"]
+
 ## Usage
 
 
