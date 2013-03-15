@@ -11,7 +11,14 @@
   (testing "trivial property"
     (is
      (quickcheck
-      (property [x arbitrary-integer]
+      (property [x integer]
+                (= x x))))))
+
+(deftest unqotueq
+  (testing "unquote syntax"
+    (is
+     (quickcheck
+      (property [x ~arbitrary-integer]
                 (= x x))))))
 
 (deftest not-ok
@@ -19,7 +26,7 @@
     (is
      (not= true
            (check-quick
-            (property [x arbitrary-integer]
+            (property [x integer]
                       (not= x x)))))))
 
 (deftest sometimes-ok
@@ -27,15 +34,15 @@
     (is
      (not= true
            (check-quick
-            (property [x arbitrary-integer]
+            (property [x integer]
                       (< x 5)))))))
 
 (deftest reverse-distributes-over-concat
   (testing "reverse distributes over concat"
     (is
      (quickcheck
-      (property [xs (arbitrary-list arbitrary-integer)
-                 ys (arbitrary-list arbitrary-integer)]
+      (property [xs (list integer)
+                 ys (list integer)]
                 (= (reverse (concat xs ys)) (concat (reverse ys) (reverse xs))))))))
 
 (deftest reverse-distributes-over-concat-broken
@@ -43,15 +50,15 @@
     (is
      (not= true
            (check-quick
-            (property [xs (arbitrary-list arbitrary-integer)
-                       ys (arbitrary-list arbitrary-integer)]
+            (property [xs (list integer)
+                       ys (list integer)]
                       (= (reverse (concat ys xs)) (concat (reverse ys) (reverse xs)))))))))
 
 (deftest natural
   (testing "arbitrary-natural generates only natural numbers"
     (is
      (quickcheck
-      (property [x arbitrary-natural]
+      (property [x natural]
                 (and (integer? x)
                      (>= x 0)))))))
 
@@ -59,28 +66,28 @@
   (testing "arbitrary-rational generates only rational numbers"
     (is
      (quickcheck
-      (property [x arbitrary-rational]
+      (property [x rational]
                 (rational? x))))))
 
 (deftest floatq
   (testing "arbitrary-float generates only floats"
     (is
      (quickcheck
-      (property [x arbitrary-float]
+      (property [x float]
                 (float? x))))))
 
 (deftest charq
   (testing "arbitrary-char generates only chars"
     (is
      (quickcheck
-      (property [x arbitrary-char]
+      (property [x char]
                 (char? x))))))
 
 (deftest ascii-char
   (testing "arbitrary-ascii-char generates only ASCII chars."
     (is
      (quickcheck
-      (property [x arbitrary-ascii-char]
+      (property [x ascii-char]
                 (and (char? x)
                      (< (int x) 128)))))))
 
@@ -88,28 +95,28 @@
   (testing "arbitrary-string generates only strings."
     (is
      (quickcheck
-      (property [x arbitrary-string]
+      (property [x string]
                 (string? x))))))
 
 (deftest symbolq
   (testing "arbitrary-symbol generates only symbols."
     (is
      (quickcheck
-      (property [x arbitrary-symbol]
+      (property [x symbol]
                 (symbol? x))))))
 
 (deftest keywordq
   (testing "arbitrary-keyword generates only keywords."
     (is
      (quickcheck
-      (property [x arbitrary-keyword]
+      (property [x keyword]
                 (keyword? x))))))
 
 (deftest ascii-string
   (testing "arbitrary-ascii-string generates only ASCII strings"
     (is
      (quickcheck
-      (property [x arbitrary-ascii-string]
+      (property [x ascii-string]
                 (and (string? x)
                      (every? #(< (int %) 128) x)))))))
 
@@ -117,23 +124,22 @@
   (testing "arbitrary-mixed works"
     (is
      (quickcheck
-      (property [x (arbitrary-mixed (list (list integer? (delay arbitrary-integer))
-                                          (list string? (delay arbitrary-string))))]
+      (property [x (mixed integer? integer
+                          string? string)]
                 (or (integer? x) (string? x)))))))
-
 
 (deftest one-of
   (testing "arbitrary-one-of works"
     (is
      (quickcheck
-      (property [x (arbitrary-one-of = "foo" "bar" "baz")]
+      (property [x (one-of = "foo" "bar" "baz")]
                 (contains? #{"foo" "bar" "baz"} x))))))
 
 (deftest listq
   (testing "arbitrary-list works"
     (is
      (quickcheck
-      (property [x (arbitrary-list arbitrary-integer)]
+      (property [x (list integer)]
                 (and (list? x)
                      (every? integer? x)))))))
 
@@ -141,7 +147,7 @@
   (testing "arbitrary-vector works"
     (is
      (quickcheck
-      (property [x (arbitrary-vector arbitrary-integer)]
+      (property [x (vector integer)]
                 (and (vector? x)
                      (every? integer? x)))))))
 
@@ -149,7 +155,7 @@
   (testing "creating a function bool -> int works"
     (is
      (quickcheck
-      (property [proc (arbitrary-function arbitrary-integer arbitrary-boolean)]
+      (property [proc (boolean -> integer)]
                 (and (function? proc)
                      (integer? (proc true))))))))
 
@@ -157,7 +163,7 @@
   (testing "creating a function int -> int works"
     (is
      (quickcheck
-      (property [proc (arbitrary-function arbitrary-integer arbitrary-integer)]
+      (property [proc (integer -> integer)]
                 (and (function? proc)
                      (integer? (proc 17))))))))
 
@@ -165,7 +171,7 @@
   (testing "creating a function nat -> int works"
     (is
      (quickcheck
-      (property [proc (arbitrary-function arbitrary-natural arbitrary-integer)]
+      (property [proc (integer -> natural)]
                 (and (function? proc)
                      (and (integer? (proc 17)))))))))
 
@@ -175,7 +181,7 @@
   (testing "creating a function rational -> int works"
     (is
      (quickcheck
-      (property [proc (arbitrary-function arbitrary-integer arbitrary-rational)]
+      (property [proc (rational -> integer)]
                 (and (function? proc)
                      (integer? (proc 2/3))))))))
 
@@ -183,7 +189,7 @@
   (testing "creating a function nat -> int works"
     (is
       (quickcheck
-       (property [proc (arbitrary-function arbitrary-integer arbitrary-float)]
+       (property [proc (float -> integer)]
                  (and (function? proc)
                       (integer? (proc 17.5))))))))
 
@@ -191,7 +197,7 @@
   (testing "creating a function char -> int works"
     (is
      (quickcheck
-      (property [proc (arbitrary-function arbitrary-integer arbitrary-char)]
+      (property [proc (char -> integer)]
                 (and (function? proc)
                      (integer? (proc \a))))))))
 
@@ -199,7 +205,7 @@
   (testing "creating a function ascii-char -> int works"
     (is
      (quickcheck
-      (property [proc (arbitrary-function arbitrary-integer arbitrary-ascii-char)]
+      (property [proc (ascii-char -> integer)]
                 (and (function? proc)
                      (integer? (proc \a))))))))
      
@@ -207,7 +213,7 @@
   (testing "creating a function string -> int works"
     (is
      (quickcheck
-      (property [proc (arbitrary-function arbitrary-integer arbitrary-string)]
+      (property [proc (string -> integer)]
                 (and (function? proc)
                      (integer? (proc "foo"))))))))
 
@@ -215,7 +221,7 @@
   (testing "creating a function ascii-string -> int works"
     (is
      (quickcheck
-      (property [proc (arbitrary-function arbitrary-integer arbitrary-ascii-string)]
+      (property [proc (ascii-string -> integer)]
                 (and (function? proc)
                      (integer? (proc "foo"))))))))
 
@@ -223,27 +229,26 @@
   (testing "creating a function symbol -> int works"
     (is
      (quickcheck
-      (property [proc (arbitrary-function arbitrary-integer arbitrary-symbol)]
+      (property [proc (symbol -> integer)]
                 (and (function? proc)
                      (integer? (proc 'foo))))))))
 
 (deftest mixed-function
-  (testing "creating a function nat -> int works"
+  (testing "creating a function mixed -> int works"
     (is
      (quickcheck
-      (property [proc (arbitrary-function arbitrary-integer
-                                          (arbitrary-mixed (list (list integer? (delay arbitrary-integer) )
-                                                                 (list string? (delay arbitrary-string)))))]
+      (property [proc ((mixed integer? integer
+                              string?  string)
+                       -> integer)]
                 (and (function? proc)
                      (integer? (proc 15))
                      (integer? (proc "foo"))))))))
 
 (deftest one-of-function
-  (testing "creating a function nat -> int works"
+  (testing "creating a function one-of -> int works"
     (is
      (quickcheck
-      (property [proc (arbitrary-function arbitrary-integer
-                                          (arbitrary-one-of = "foo" "bar" "baz"))]
+      (property [proc ((one-of = "foo" "bar" "baz") -> integer)]
                 (and (function? proc)
                      (integer? (proc "foo"))))))))
 
@@ -251,7 +256,7 @@
   (testing "creating a function nat -> int works"
     (is
      (quickcheck
-      (property [proc (arbitrary-function arbitrary-integer (arbitrary-vector arbitrary-integer))]
+      (property [proc ((vector integer) -> integer)]
                 (and (function? proc)
                      (integer? (proc [15 13]))))))))
 
@@ -259,8 +264,7 @@
   (testing "creating a function function -> int works"
     (is
       (quickcheck
-       (property [proc (arbitrary-function arbitrary-integer
-                                           (arbitrary-function arbitrary-boolean arbitrary-char))]
+       (property [proc ((char -> boolean) -> integer)]
                  (and (function? proc)
                       (integer? (proc #(= % \A)))))))))
 
@@ -268,7 +272,7 @@
   (testing "==> works"
     (is
      (quickcheck
-      (property [x arbitrary-integer]
+      (property [x integer]
                 (==> (even? x)
                      (integer? (/ x 2))))))))
 
@@ -276,7 +280,7 @@
   (testing "label works"
     (is
      (let [[ntests stamps success]
-           (quickcheck-results (property [x arbitrary-integer]
+           (quickcheck-results (property [x integer]
                                          (label "yo" (integer? x))))]
        (and (true? success)
             (every? (fn [el]
@@ -287,7 +291,7 @@
   (testing "classify works"
     (is
      (let [[ntests stamps success]
-           (quickcheck-results (property [x arbitrary-integer]
+           (quickcheck-results (property [x integer]
                                          (classify (even? x) "even" (integer? x))))]
        (and (true? success)
             (every? (fn [el]
@@ -299,7 +303,7 @@
   (testing "trivial works"
     (is
      (let [[ntests stamps success]
-           (quickcheck-results  (property [x arbitrary-integer]
+           (quickcheck-results  (property [x integer]
                                           (trivial (even? x) (integer? x))))]
        (and (true? success)
             (every? (fn [el]
@@ -313,19 +317,14 @@
   (testing "arbitrary-record works"
     (is
      (quickcheck
-      (property [x (arbitrary-record ->Foo
-                                     (list :bar :baz)
-                                     arbitrary-integer
-                                     arbitrary-string)]
+      (property [x (record ->Foo [:bar integer 
+                                  :baz string])]
                 (and (instance? Foo x) (integer? (:bar x)) (string? (:baz x))))))))
 
 (deftest record2
   (testing "arbitrary-record works"
     (is
       (quickcheck 
-       (property [proc (arbitrary-function arbitrary-integer
-                                           (arbitrary-record ->Foo
-                                                             (list :bar :baz)
-                                                             arbitrary-integer
-                                                             arbitrary-string))]
+       (property [proc ((record ->Foo [:bar integer :baz string])
+                        -> integer)]
                  (integer? (proc (Foo. 47 "foo"))))))))

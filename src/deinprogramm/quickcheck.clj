@@ -433,11 +433,143 @@
      ;; (seq (union arbitrary generator))
      args])
 
+(defmulti expand-arbitrary
+  "Multimethod to expand `arbitrary' forms.
+
+Dispatches on the symbol for atomic arbitrary forms,
+and on [op] for compound arbitrary forms, where op is
+the operator."
+  (fn [form]
+    (cond
+     (symbol? form) form
+     (or (not (seq? form)) (not (seq form))) :default
+     (some #(= '-> %) form) :function
+     :else [(first form)])))
+
+(defmethod expand-arbitrary :default [form]
+  (throw (Exception. (str "invalid expand-arbitrary form: " form))))
+
+(defmethod expand-arbitrary :function [form]
+  (let [[before with] (split-with #(not= % '->) form)
+        after (rest with)]
+    (if (not= 1 (count after))
+      (throw (Exception. (str "more than one codomain for expand-arbitrary function form: " form))))
+    `(arbitrary-function ~(expand-arbitrary (first after)) ~@(map expand-arbitrary before))))
+
+(defmethod expand-arbitrary 'boolean [form]
+  `arbitrary-boolean)
+
+(defmethod expand-arbitrary 'integer [form]
+  `arbitrary-integer)
+
+(defmethod expand-arbitrary 'natural [form]
+  `arbitrary-natural)
+
+(defmethod expand-arbitrary 'rational [form]
+  `arbitrary-rational)
+
+(defmethod expand-arbitrary 'float [form]
+  `arbitrary-float)
+
+(defmethod expand-arbitrary 'char [form]
+   `arbitrary-char)
+
+(defmethod expand-arbitrary 'ascii-char [form]
+  `arbitrary-ascii-char)
+
+(defmethod expand-arbitrary 'printable-ascii-char [form]
+  `arbitrary-printable-ascii-char)
+
+(defmethod expand-arbitrary 'string [form]
+  `arbitrary-string)
+
+(defmethod expand-arbitrary 'ascii-string [form]
+  `arbitrary-ascii-string)
+
+(defmethod expand-arbitrary 'printable-ascii-string [form]
+  `arbitrary-printable-ascii-string)
+
+(defmethod expand-arbitrary 'symbol [form]
+  `arbitrary-symbol)
+
+(defmethod expand-arbitrary 'keyword [form]
+  `arbitrary-keyword)
+
+(defn- expand-has-arg-count
+  [form n]
+  (if (not= (- (count form) 1) n)
+    (throw (Exception. (str "Form should have " n " arguments: " form)))))
+
+(defn- expand-has-at-least-arg-count
+  [form n]
+  (if (< (- (count form) 1) n)
+    (throw (Exception. (str "Form should have at least " n " arguments: " form)))))
+
+(defmethod expand-arbitrary '[clojure.core/unquote] [form]
+  (expand-has-arg-count form 1)
+  (second form))
+
+(defmethod expand-arbitrary '[one-of] [form]
+  (expand-has-at-least-arg-count form 2)
+  `(arbitrary-one-of ~(second form) ~@(nthrest form 2)))
+
+(defmethod expand-arbitrary '[tuple] [form]
+  `(arbitrary-tuple ~@(map expand-arbitrary (rest form))))
+
+(defmethod expand-arbitrary '[list] [form]
+  (expand-has-arg-count form 1)
+  `(arbitrary-list ~(expand-arbitrary (nth form 1))))
+
+(defmethod expand-arbitrary '[vector] [form]
+  (expand-has-arg-count form 1)
+  `(arbitrary-vector ~(expand-arbitrary (nth form 1))))
+
+; (record cons (acc ...) arb ...)
+(defmethod expand-arbitrary '[record] [form]
+  (expand-has-arg-count form 2)
+  (let [ops (nth form 2)]
+    (when (odd? (count ops))
+      (throw (Exception. "Even number of field operands to record.")))
+    (let [pairs (partition 2 ops)]
+      `(arbitrary-record ~(nth form 1) (list ~@(map first pairs))
+                         ~@(map expand-arbitrary (map second pairs))))))
+
+; (mixed pred arb ...)
+(defmethod expand-arbitrary '[mixed] [form]
+  (expand-has-at-least-arg-count form 2)
+  (when (even? (count form))
+    (throw (Exception. "Odd number of operands to mixed.")))
+  `(arbitrary-mixed (list ~@(map (fn [[pred arb]]
+                                   `(list ~pred (delay ~(expand-arbitrary arb))))
+                                 (partition 2 (rest form))))))
+
+(defmacro arbitrary
+  "Convenient syntax for constructing arbitraries.
+
+This is usually used implicitly via the property macro.
+
+The argument form can be one of the following:
+
+- boolean, integer, natural, rational, float, char, ascii-char,
+  printable-ascii-char, string, ascii-string, printable-ascii-string,
+  symbol, keyword
+- (one of <equality> <expr> ...)
+- (tuple <arb> ...)
+- (list <arb>)
+- (vector <arb>)
+- (record <constructor> [<accessor> <arb> ...])
+- (mixed <pred> <arb> <pred> <arb> ...)
+- ~<expr>, which evaluates <expr> as a regular expression
+
+The syntax is extensible via the expand-arbitrary multimethod."
+  [form]
+  (expand-arbitrary form))
+
 (defmacro property
   "Create a property through binding identifiers to arbitraries.
 
-The clauses are a vector of alternating identifiers and expressions,
-where the expressions evaluate to generators or arbitraries.
+The clauses are a vector of alternating identifiers and arbitraries,
+which are implicitly in the syntax understood by the arbitrary macro.
 
 The body can use the identifiers, and should evaluate to a boolean
 saying whether the property is satisfied."
@@ -450,7 +582,7 @@ saying whether the property is satisfied."
     `(Property. (fn [~@ids]
                   ~body0 ~@bodies)
                 '~ids
-                (list ~@rhss))))
+                (list ~@(map (fn [rhs] `(arbitrary ~rhs)) rhss)))))
 
 (defrecord ^{:doc "Result from a QuickCheck run."}
     Check-result
