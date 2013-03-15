@@ -1,4 +1,4 @@
-# `deinprogramm.quickcheck`
+# deinprogramm.quickcheck
 
 A Clojure port of the original Haskell QuickCheck.
 
@@ -34,6 +34,10 @@ from John Hughes's original paper.
 		  (property [xs (list integer)
 					 ys (list integer)]
 					(= (reverse (concat xs ys)) (concat (reverse ys) (reverse xs))))))))
+
+## Documentation
+
+- [Introduction](https://bitbucket.org/sperber/deinprogramm.quickcheck/src/tip/doc/intro.md?at=default)
 
 ## License
 
