@@ -155,7 +155,7 @@
   (testing "arbitrary-map works"
     (is
      (quickcheck
-      (property [x ~(arbitrary-map arbitrary-integer arbitrary-string)]
+      (property [x (map integer string)]
                 (and (map? x)
                      (every? integer? (keys x))
                      (every? string? (vals x))))))))
@@ -273,7 +273,7 @@
   (testing "creating a function {:kw, int} -> int works"
     (is
      (quickcheck
-      (property [proc (~(arbitrary-map arbitrary-keyword arbitrary-integer) -> integer)]
+      (property [proc ((map keyword integer) -> integer)]
                 (and (function? proc)
                      (integer? (proc {:b 0 :a 42}))))))))
 

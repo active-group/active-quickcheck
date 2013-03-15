@@ -539,6 +539,11 @@ the operator."
   (expand-has-arg-count form 1)
   `(arbitrary-vector ~(expand-arbitrary (nth form 1))))
 
+(defmethod expand-arbitrary '[map] [form]
+  (expand-has-arg-count form 2)
+  `(arbitrary-map ~(expand-arbitrary (nth form 1))
+                  ~(expand-arbitrary (nth form 2))))
+
 ; (record cons (acc ...) arb ...)
 (defmethod expand-arbitrary '[record] [form]
   (expand-has-arg-count form 2)
