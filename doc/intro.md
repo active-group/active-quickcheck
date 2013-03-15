@@ -16,8 +16,9 @@ Here's a simple example that checks the commutativity of addition:
                    (= (+ a b) (+ b a))))
     OK, passed 100 tests.
 
-The `property` macro evaluates to a *property*.  The `quickcheck`
-function checks that the property and prints a report of its findings.
+The `property` macro evaluates to a *property*. The `quickcheck`
+function checks that the property holds and prints a report of its
+findings.
 
 Sometimes, of course, the property in question is not fulfilled.  In
 this case, QuickCheck will try to find a counterexample and report it:
@@ -35,7 +36,7 @@ associative](http://en.wikipedia.org/wiki/Floating_point).)
 
 ## The `property` macro
 
-The most important from in the QuickCheck library is the `property`
+The most important form in the QuickCheck library is the `property`
 macro, which is similar to `let` in that it binds variables to
 values.  The body should evaluate to a boolean saying whether the
 property is satisfied, given appropriate bindings for the variables.
@@ -48,9 +49,9 @@ that allow generating random values of a certain type.  In this case,
 integers.
 
 Similarly, `boolean`, `integer`, `natural`, `rational`, `float`,
-`char`, `ascii-char`, `printable-ascii-char`, `string`, `ascii-string`,
-`printable-ascii-string, symbol`, `keyword` are all specifications of
-arbitraries of the corresponding types.
+`char`, `ascii-char`, `printable-ascii-char`, `string`,
+`ascii-string`, `printable-ascii-string`, `symbol`, `keyword` are all
+specifications of arbitraries of the corresponding types.
 
 ## Abitraries
 
@@ -116,7 +117,7 @@ The set of arbitrary specifications is extensible; check the
 ## Properties
 
 Most properties are simply boolean expressions.  Sometimes, properties
-hold only for a subset of the values that QuickChdeck generates.  In
+hold only for a subset of the values that QuickCheck generates.  In
 this case, the `==>` macro says that a property should only be
 required to hold when a condition holds.  Here's an example:
 
@@ -137,7 +138,7 @@ print results.  Instead, it returns a description of the result.
 ## Using QuickCheck with `clojure.test`
 
 QuickCheck augments `clojure.test`'s `is` macro so that it handles
-`quickcheck` forms specially.  Exampel:
+`quickcheck` forms specially.  Example:
 
     :::clojure
     (deftest ok
