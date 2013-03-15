@@ -625,12 +625,14 @@ The argument form can be one of the following:
 - boolean, integer, natural, rational, float, char, ascii-char,
   printable-ascii-char, string, ascii-string, printable-ascii-string,
   symbol, keyword
-- (one of <equality> <expr> ...)
+- (one-of <equality> <expr> ...)
 - (tuple <arb> ...)
 - (list <arb>)
 - (vector <arb>)
+- (set <arb>)
 - (record <constructor> [<accessor> <arb> ...])
 - (mixed <pred> <arb> <pred> <arb> ...)
+- (map <arb1> <arb2>) ; map with keys from <arb1>, values from <arb2>
 - ~<expr>, which evaluates <expr> as a regular expression
 
 The syntax is extensible via the expand-arbitrary multimethod."
