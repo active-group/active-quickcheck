@@ -587,7 +587,7 @@ The argument form can be one of the following:
 - boolean, integer, natural, rational, float, char, ascii-char,
   printable-ascii-char, string, ascii-string, printable-ascii-string,
   symbol, keyword
-- (one of <equality> <expr> ...)
+- (one-of <equality> <expr> ...)
 - (tuple <arb> ...)
 - (list <arb>)
 - (vector <arb>)
