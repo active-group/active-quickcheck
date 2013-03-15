@@ -1,4 +1,4 @@
-(defproject deinprogramm.quickcheck "0.1.0-SNAPSHOT"
+(defproject de.deinprogramm/quickcheck "0.1.0"
   :description "QuickCheck clone for Clojure"
   :dependencies [[org.clojure/clojure "1.5.0"]
                  [org.clojure/math.numeric-tower "0.0.2"]
