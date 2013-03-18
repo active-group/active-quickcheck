@@ -14,11 +14,11 @@ from John Hughes's original paper.
 
 ## Releases and Dependency Information
 
-Latest stable release: 0.1.1
+Latest stable release: 0.1.2
 
 [Leiningen](https://github.com/technomancy/leiningen) dependency information:
 
-    [de.deinprogramm/quickcheck "0.1.1"]
+    [de.deinprogramm/quickcheck "0.1.2"]
 
 ## Usage
 

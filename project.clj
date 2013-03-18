@@ -1,4 +1,4 @@
-(defproject de.deinprogramm/quickcheck "0.1.1"
+(defproject de.deinprogramm/quickcheck "0.1.2"
   :description "QuickCheck clone for Clojure"
   :url "http://bitbucket.org/sperber/deinprogramm.quickcheck"
   :dependencies [[org.clojure/clojure "1.5.0"]
