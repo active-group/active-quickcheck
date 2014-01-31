@@ -12,8 +12,8 @@
 
 (defrecord Random-generator [s1 s2])
 
-(def min-bound (- (expt 2 31)))
-(def max-bound (- (expt 2 31) 1))
+(def min-bound (- (expt 2N 31)))
+(def max-bound (- (expt 2N 31) 1))
 (def int-range (- max-bound min-bound))
 
 (defn make-random-generator
