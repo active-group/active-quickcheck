@@ -63,11 +63,11 @@
 
 (def choose-short
   "Generator for shorts in [-32768, 32767]."
-  (choose-integer -32768 32767))
+  (choose-integer Short/MIN_VALUE Short/MAX_VALUE))
 
 (def choose-long
   "Generator for shorts in [-2147483648, 2147483647]."
-  (choose-integer -2147483648 2147483647))
+  (choose-integer Long/MIN_VALUE Long/MAX_VALUE))
 
 (defn choose-float
   "Generator for floats within a range, bounds are inclusive."
@@ -644,7 +644,7 @@ This is usually used implicitly via the property macro.
 
 The argument form can be one of the following:
 
-- boolean, integer, natural, rational, float, char, ascii-char,
+- boolean, integer, short, long, natural, rational, float, char, ascii-char,
   printable-ascii-char, string, ascii-string, printable-ascii-string,
   symbol, keyword
 - (one-of <equality> <expr> ...)
