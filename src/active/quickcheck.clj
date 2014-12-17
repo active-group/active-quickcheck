@@ -296,6 +296,15 @@
               (fn [n gen]
                 (variant n gen))))
 
+(defn arbitrary-integer-from-to
+  "Arbitrary integer from range."
+  [from to]
+  (Arbitrary. (sized
+               (fn [n]
+                 (choose-integer from to)))
+              (fn [n gen]
+                (variant (- n from) gen))))
+
 (defn- arbitrary-int-like
   [gen to-int]
   (Arbitrary. gen
@@ -593,6 +602,10 @@ the operator."
 (defmethod expand-arbitrary '[clojure.core/unquote] [form]
   (expand-has-arg-count form 1)
   (second form))
+
+(defmethod expand-arbitrary '[integer-from-to] [form]
+  (expand-has-at-least-arg-count form 2)
+  `(arbitrary-integer-from-to ~(second form) ~@(nthrest form 2)))
 
 (defmethod expand-arbitrary '[one-of] [form]
   (expand-has-at-least-arg-count form 2)

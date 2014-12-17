@@ -109,6 +109,21 @@
                      (>= x -2147483648)
                      (<= x 2147483647)))))))
 
+(deftest integer-from-toq
+  (testing "arbitrary-integer-from-to generates only longs."
+    (is
+     (quickcheck
+      (property 
+       [a integer
+        b integer]
+       (let [from (min a b)
+             to (max a b)]
+       (property
+        [x (integer-from-to from to)]
+        (and (integer? x)
+             (>= x from)
+             (<= x to)))))))))
+
 (deftest stringq
   (testing "arbitrary-string generates only strings."
     (is
