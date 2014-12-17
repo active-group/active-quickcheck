@@ -174,6 +174,14 @@
      (let [g (func size)]
        ((:func g) size rgen)))))
 
+(defn resize
+  "Make a generator with a specified size."
+  [size gen]
+  (let [f (:func gen)]
+    (Generator.
+     (fn [_size rgen]
+       (f size rgen)))))
+
 ; (list a) -> (generator a)
 (defn choose-one-of
   "Make a generator that yields one of a list of values."
@@ -745,7 +753,7 @@ saying whether the property is satisfied."
    (instance? Generator thing) thing
    :else (throw (Error. (str "cannot be coerced to a result generator: " (.toString thing))))))
 
-(defn- coerce->generator
+(defn coerce->generator
   "Coerce an object to a generator."
   [thing]
   (cond

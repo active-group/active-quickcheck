@@ -69,6 +69,15 @@
       (property [x rational]
                 (rational? x))))))
 
+(deftest resizeq
+  (testing "whether resize works"
+    (is
+     (quickcheck
+      (property [x ~(resize 100 (coerce->generator arbitrary-natural))]
+                (and (integer? x)
+                     (>= x 0)
+                     (<= x 100)))))))
+
 (deftest floatq
   (testing "arbitrary-float generates only floats"
     (is
