@@ -63,15 +63,21 @@
 
 (def choose-byte
   "Generator for bytes in [-128, 127]."
-  (choose-integer Byte/MIN_VALUE Byte/MAX_VALUE))
-
+  (lift->generator
+   byte
+   (choose-integer Byte/MIN_VALUE Byte/MAX_VALUE)))
+  
 (def choose-short
   "Generator for shorts in [-32768, 32767]."
-  (choose-integer Short/MIN_VALUE Short/MAX_VALUE))
+  (lift->generator
+   short
+   (choose-integer Short/MIN_VALUE Short/MAX_VALUE)))
 
 (def choose-long
   "Generator for shorts in [-2147483648, 2147483647]."
-  (choose-integer Long/MIN_VALUE Long/MAX_VALUE))
+  (lift->generator
+   long
+   (choose-integer Long/MIN_VALUE Long/MAX_VALUE)))
 
 (defn choose-float
   "Generator for floats within a range, bounds are inclusive."
@@ -231,6 +237,11 @@
   "Generator for a vector with size n."
   [el-gen n]
   (lift->generator vec (choose-list el-gen n)))
+
+(defn choose-byte-array
+  "Generator for a byte array with size n."
+  [n]
+  (lift->generator byte-array (choose-list choose-byte n)))
 
 (defn- map-of-tuples
   [tups]
@@ -475,6 +486,10 @@
   [arbitrary-el]
   (arbitrary-sequence-like choose-vector #(into () %) arbitrary-el))
 
+(def arbitrary-byte-array
+  "Arbitrary byte-array."
+  (arbitrary-sequence-like (fn [_ n] (choose-byte-array n)) #(into () %) arbitrary-byte))
+
 (defn arbitrary-map
   "Arbitrary map over the given arbitrary key and value."
   [arbitrary-key arbitrary-value]
@@ -602,6 +617,9 @@ the operator."
 (defmethod expand-arbitrary 'printable-ascii-string [form]
   `arbitrary-printable-ascii-string)
 
+(defmethod expand-arbitrary 'byte-array [form]
+  `arbitrary-byte-array)
+
 (defmethod expand-arbitrary 'symbol [form]
   `arbitrary-symbol)
 
@@ -678,7 +696,7 @@ The argument form can be one of the following:
 
 - boolean, integer, short, long, natural, rational, float, char, ascii-char,
   printable-ascii-char, string, ascii-string, printable-ascii-string,
-  symbol, keyword
+  byte-array, symbol, keyword
 - (one-of <equality> <expr> ...)
 - (tuple <arb> ...)
 - (list <arb>)

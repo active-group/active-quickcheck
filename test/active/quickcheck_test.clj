@@ -149,6 +149,15 @@
       (property [x string]
                 (string? x))))))
 
+(deftest byte-arrayq
+  (testing "arbitrary-byte-array generates only byte arrays."
+    ;; http://stackoverflow.com/questions/14796964/how-to-check-if-a-clojure-object-is-a-byte-array
+    (let [check (type (byte-array []))]
+      (is
+       (quickcheck
+        (property [x byte-array]
+                  (instance? check x)))))))
+
 (deftest symbolq
   (testing "arbitrary-symbol generates only symbols."
     (is
