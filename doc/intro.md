@@ -1,6 +1,6 @@
-# Introduction to `deinprogramm.quickcheck`
+# Introduction to `active-quickcheck`
 
-The `deinprogramm.quickcheck` library is a straightforward port of the
+The `active-quickcheck` library is a straightforward port of the
 original version of
 [QuickCheck](http://en.wikipedia.org/wiki/Quickcheck) to Clojure.
 It allows a programmer to formulate specifications of properties of
@@ -10,7 +10,7 @@ test cases that check if the property indeed holds.
 Here's a simple example that checks the commutativity of addition:
 
     :::clojure
-    (use 'deinprogramm.quickcheck)
+    (use 'active.quickcheck)
     (quickcheck (property [a integer
                            b integer]
                    (= (+ a b) (+ b a))))

@@ -10,8 +10,8 @@
 
 (ns ^{:author "Michael Sperber, working from John Hughes's original Haskell version"
       :doc "A QuickCheck clone for Clojure."}
-  deinprogramm.quickcheck
-  (:use deinprogramm.random)
+  active.quickcheck
+  (:use active.random)
   (:use clojure.math.numeric-tower)
   (:use clojure.algo.monads)
   (:use [clojure.test :only [assert-expr do-report]]))

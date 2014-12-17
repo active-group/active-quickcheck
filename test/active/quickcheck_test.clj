@@ -1,6 +1,6 @@
-(ns deinprogramm.quickcheck-test
+(ns active.quickcheck-test
   (:use clojure.test)
-  (:use deinprogramm.quickcheck))
+  (:use active.quickcheck))
 
 (defn check-quick
   [prop]

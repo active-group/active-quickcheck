@@ -1,4 +1,4 @@
-(ns deinprogramm.random
+(ns active.random
   (:use clojure.math.numeric-tower))
 
 ; This is a purely functional random generator, based on Lennart
