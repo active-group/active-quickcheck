@@ -9,7 +9,6 @@ test cases that check if the property indeed holds.
 
 Here's a simple example that checks the commutativity of addition:
 
-    :::clojure
     (use 'active.quickcheck)
     (quickcheck (property [a integer
                            b integer]
@@ -23,7 +22,6 @@ findings.
 Sometimes, of course, the property in question is not fulfilled.  In
 this case, QuickCheck will try to find a counterexample and report it:
     
-    :::clojure
     (quickcheck (property [a float
                            b float
                            c float]
@@ -58,7 +56,6 @@ specifications of arbitraries of the corresponding types.
 Arbitraries are not restricted to atomic, primitive types.  Here is an
 example:
 
-    :::clojure
     (quickcheck
       (property [xs (list integer)
                  ys (list integer)]
@@ -94,7 +91,6 @@ the brackets contain pairs of an accessor (typically `:bar` for field
 
 Example:
 
-    :::clojure
     (defrecord Foo [bar baz])
     (property [x (record ->Foo [:bar integer :baz string])]
       ...)
@@ -102,13 +98,11 @@ Example:
 Arbitrary specifications can also be used outside of `property` with
 the `arbitrary` macro:
 
-    :::clojure
     (def list-of-integer (arbitrary (list integer)))
 
 Finally, `~<expr>` is an arbitrary specification that evaluates to
 `<expr>`'s value.  For example
 
-    :::clojure
     (arbitrary ~list-of-integer)
 
 The set of arbitrary specifications is extensible; check the
@@ -121,7 +115,6 @@ hold only for a subset of the values that QuickCheck generates.  In
 this case, the `==>` macro says that a property should only be
 required to hold when a condition holds.  Here's an example:
 
-    :::clojure
     (property [x integer]
       (==> (even? x)
            (integer? (/ x 2))))
@@ -140,7 +133,6 @@ print results.  Instead, it returns a description of the result.
 QuickCheck augments `clojure.test`'s `is` macro so that it handles
 `quickcheck` forms specially.  Example:
 
-    :::clojure
     (deftest ok
       (testing "trivial property"
         (is
