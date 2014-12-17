@@ -69,7 +69,9 @@
 
 (defn random-integer 
   [rg low high]
-  (let [b 2147483561
+  (let [low (bigint low)
+        high (bigint high)
+        b 2147483561
 	k (+ (- high low) 1)]
     (loop [n (ilogbase b k)
            acc low
