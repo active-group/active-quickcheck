@@ -17,7 +17,7 @@ from John Hughes's original paper.
 
 ## Releases and Dependency Information
 
-Latest stable release: 0.1.2
+Latest stable release: 0.1.0
 
 [Leiningen](https://github.com/technomancy/leiningen) dependency information:
 
