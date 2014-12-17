@@ -28,7 +28,6 @@ Latest stable release: 0.1.0
 
 ### Use directly
 
-	:::clojure
 	(quickcheck
 	  (property [xs (list integer)
 				 ys (list integer)]
@@ -37,7 +36,6 @@ Latest stable release: 0.1.0
 
 ### Use from `clojure.test`
 
-	:::clojure
 	(deftest reverse-distributes-over-concat
 	  (testing "reverse distributes over concat"
 		(is
