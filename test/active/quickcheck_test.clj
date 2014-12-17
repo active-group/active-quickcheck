@@ -91,6 +91,24 @@
                 (and (char? x)
                      (< (int x) 128)))))))
 
+(deftest shortq
+  (testing "arbitrary-short generates only shorts."
+    (is
+     (quickcheck
+      (property [x short]
+                (and (integer? x)
+                     (>= x -32768)
+                     (<= x 32767)))))))
+
+(deftest longq
+  (testing "arbitrary-long generates only longs."
+    (is
+     (quickcheck
+      (property [x short]
+                (and (integer? x)
+                     (>= x -2147483648)
+                     (<= x 2147483647)))))))
+
 (deftest stringq
   (testing "arbitrary-string generates only strings."
     (is

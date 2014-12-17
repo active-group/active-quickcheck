@@ -61,6 +61,14 @@
      (let [[n _] (random-integer rgen lower upper)]
        n))))
 
+(def choose-short
+  "Generator for shorts in [-32768, 32767]."
+  (choose-integer -32768 32767))
+
+(def choose-long
+  "Generator for shorts in [-2147483648, 2147483647]."
+  (choose-integer -2147483648 2147483647))
+
 (defn choose-float
   "Generator for floats within a range, bounds are inclusive."
   [lower upper]
@@ -294,6 +302,14 @@
               (fn [v rgen]
                 (variant (to-int v) rgen))))
 
+(def arbitrary-short
+  "Arbitrary short."
+  (arbitrary-int-like choose-short short))
+
+(def arbitrary-long
+  "Arbitrary long."
+  (arbitrary-int-like choose-long long))
+
 (def arbitrary-ascii-char
   "Arbitrary ASCII character."
   (arbitrary-int-like choose-ascii-char int))
@@ -524,6 +540,12 @@ the operator."
 
 (defmethod expand-arbitrary 'integer [form]
   `arbitrary-integer)
+
+(defmethod expand-arbitrary 'short [form]
+  `arbitrary-short)
+
+(defmethod expand-arbitrary 'long [form]
+  `arbitrary-long)
 
 (defmethod expand-arbitrary 'natural [form]
   `arbitrary-natural)
