@@ -91,6 +91,15 @@
                 (and (char? x)
                      (< (int x) 128)))))))
 
+(deftest byteq
+  (testing "arbitrary-byte generates only shorts."
+    (is
+     (quickcheck
+      (property [x byte]
+                (and (integer? x)
+                     (>= x -128)
+                     (<= x 127)))))))
+
 (deftest shortq
   (testing "arbitrary-short generates only shorts."
     (is

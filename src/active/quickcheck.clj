@@ -61,6 +61,10 @@
      (let [[n _] (random-integer rgen lower upper)]
        n))))
 
+(def choose-byte
+  "Generator for bytes in [-128, 127]."
+  (choose-integer Byte/MIN_VALUE Byte/MAX_VALUE))
+
 (def choose-short
   "Generator for shorts in [-32768, 32767]."
   (choose-integer Short/MIN_VALUE Short/MAX_VALUE))
@@ -311,6 +315,10 @@
               (fn [v rgen]
                 (variant (to-int v) rgen))))
 
+(def arbitrary-byte
+  "Arbitrary byte."
+  (arbitrary-int-like choose-byte byte))
+
 (def arbitrary-short
   "Arbitrary short."
   (arbitrary-int-like choose-short short))
@@ -549,6 +557,9 @@ the operator."
 
 (defmethod expand-arbitrary 'integer [form]
   `arbitrary-integer)
+
+(defmethod expand-arbitrary 'byte [form]
+  `arbitrary-byte)
 
 (defmethod expand-arbitrary 'short [form]
   `arbitrary-short)
