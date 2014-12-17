@@ -27,8 +27,8 @@
 
 (defn random-generator-next
   [rg]
-    (let [s1 (.s1 rg)
-          s2 (.s2 rg)
+    (let [s1 (:s1 rg)
+          s2 (:s2 rg)
           k (quot s1 53668)
 	  k* (quot s2 52774)
           s1*  (- (* 40014 (- s1 (* k 53668)))
@@ -49,8 +49,8 @@
 
 (defn random-generator-split
   [rg]
-  (let [s1 (.s1 rg)
-        s2 (.s2 rg)
+  (let [s1 (:s1 rg)
+        s2 (:s2 rg)
         new-s1 (if (= s1 2147483562)
                  1
                  (+ s1 1))
@@ -59,8 +59,8 @@
                  (- s2 1))
         [_ nrg] (random-generator-next rg)]
     (list (Random-generator. new-s1
-                             (.s2 nrg))
-          (Random-generator. (.s1 nrg)
+                             (:s2 nrg))
+          (Random-generator. (:s1 nrg)
                              new-s2))))
 
 ; The intervals are inclusive.

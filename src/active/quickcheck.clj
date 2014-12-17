@@ -375,7 +375,7 @@
   (Arbitrary. (lift->generator make-rational
                                (:generator arbitrary-integer)
                                (:generator arbitrary-natural))
-              (fn [r gen]
+              (fn [^clojure.lang.Ratio r gen]
                 (coarbitrary arbitrary-integer
                              (.numerator r)
                              (coarbitrary arbitrary-integer
@@ -394,7 +394,7 @@
                                (:generator arbitrary-integer)
                                (:generator arbitrary-integer))
               (fn [r gen]
-                (let [fr (rationalize r)]
+                (let [^clojure.lang.Ratio fr (rationalize r)]
                   (coarbitrary arbitrary-integer
                                (.numerator fr)
                                (coarbitrary arbitrary-integer
@@ -769,7 +769,7 @@ saying whether the property is satisfied."
    (instance? Boolean thing) (return (assoc nothing :ok thing))
    (instance? Check-result thing) (return thing)
    (instance? Generator thing) thing
-   :else (throw (Error. (str "cannot be coerced to a result generator: " (.toString thing))))))
+   :else (throw (Error. (str "cannot be coerced to a result generator: " thing)))))
 
 (defn coerce->generator
   "Coerce an object to a generator."
@@ -777,7 +777,7 @@ saying whether the property is satisfied."
   (cond
    (instance? Generator thing) thing
    (instance? Arbitrary thing) (:generator thing)
-   :else (throw (Error. (str "cannot be coerced to a generator: " (.toString thing))))))
+   :else (throw (Error. (str "cannot be coerced to a generator: " thing)))))
 
 
 (defn for-all
@@ -827,7 +827,7 @@ saying whether the property is satisfied."
 (defn collect
   "Label a testable value with an the string representation of an object."
   [lbl testable]
-  (label (.toString lbl) testable))
+  (label (str lbl) testable))
   
 ; Running the whole shebang
 

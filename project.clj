@@ -10,4 +10,6 @@
             :distribution :repo
             :comments "same as Clojure"}
   :scm {:name "git"
-        :url "https://github.com/active-group/active-quickcheck.git"})
+        :url "https://github.com/active-group/active-quickcheck.git"}
+
+  :global-vars {*warn-on-reflection* true})
