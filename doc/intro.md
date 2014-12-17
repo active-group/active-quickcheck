@@ -9,11 +9,12 @@ test cases that check if the property indeed holds.
 
 Here's a simple example that checks the commutativity of addition:
 
-    :::clojure
-    (use 'active.quickcheck)
-    (quickcheck (property [a integer
-                           b integer]
-                   (= (+ a b) (+ b a))))
+{% highlight clojure %}
+(use 'active.quickcheck)
+(quickcheck (property [a integer
+                       b integer]
+               (= (+ a b) (+ b a))))
+{% endhighlight %}
     OK, passed 100 tests.
 
 The `property` macro evaluates to a *property*. The `quickcheck`
@@ -23,11 +24,12 @@ findings.
 Sometimes, of course, the property in question is not fulfilled.  In
 this case, QuickCheck will try to find a counterexample and report it:
     
-    :::clojure
-    (quickcheck (property [a float
-                           b float
-                           c float]
-      (= (* a (* b c)) (* (* a b) c))))
+{% highlight clojure %}
+(quickcheck (property [a float
+					   b float
+					   c float]
+  (= (* a (* b c)) (* (* a b) c))))
+{% endhighlight %}
     Falsifiable, after 41 tests:
     a = 19.0 b = -10.850000023841858 c = 11.578947365283966
 
@@ -58,11 +60,12 @@ specifications of arbitraries of the corresponding types.
 Arbitraries are not restricted to atomic, primitive types.  Here is an
 example:
 
-    :::clojure
-    (quickcheck
-      (property [xs (list integer)
-                 ys (list integer)]
-        (= (reverse (concat xs ys)) (concat (reverse ys) (reverse xs)))))
+{% highlight clojure %}
+(quickcheck
+  (property [xs (list integer)
+			 ys (list integer)]
+	(= (reverse (concat xs ys)) (concat (reverse ys) (reverse xs)))))
+{% endhighlight %}
 
 In this case, `(list integer)` is the specification of an arbitrary
 that generates lists of integers.
@@ -94,22 +97,25 @@ the brackets contain pairs of an accessor (typically `:bar` for field
 
 Example:
 
-    :::clojure
-    (defrecord Foo [bar baz])
-    (property [x (record ->Foo [:bar integer :baz string])]
-      ...)
+{% highlight clojure %}
+(defrecord Foo [bar baz])
+(property [x (record ->Foo [:bar integer :baz string])]
+  ...)
+{% endhighlight %}
 
 Arbitrary specifications can also be used outside of `property` with
 the `arbitrary` macro:
 
-    :::clojure
+{% highlight clojure %}
     (def list-of-integer (arbitrary (list integer)))
+{% endhighlight %}
 
 Finally, `~<expr>` is an arbitrary specification that evaluates to
 `<expr>`'s value.  For example
 
-    :::clojure
-    (arbitrary ~list-of-integer)
+{% highlight clojure %}
+(arbitrary ~list-of-integer)
+{% endhighlight %}
 
 The set of arbitrary specifications is extensible; check the
 `expand-arbitrary` multimethod.
@@ -121,10 +127,11 @@ hold only for a subset of the values that QuickCheck generates.  In
 this case, the `==>` macro says that a property should only be
 required to hold when a condition holds.  Here's an example:
 
-    :::clojure
-    (property [x integer]
-      (==> (even? x)
-           (integer? (/ x 2))))
+{% highlight clojure %}
+(property [x integer]
+  (==> (even? x)
+	   (integer? (/ x 2))))
+{% endhighlight %}
 
 ## Using QuickCheck directly
 
@@ -140,10 +147,11 @@ print results.  Instead, it returns a description of the result.
 QuickCheck augments `clojure.test`'s `is` macro so that it handles
 `quickcheck` forms specially.  Example:
 
-    :::clojure
-    (deftest ok
-      (testing "trivial property"
-        (is
-         (quickcheck
-          (property [x integer]
-                    (= x x))))))
+{% highlight clojure %}
+(deftest ok
+  (testing "trivial property"
+	(is
+	 (quickcheck
+	  (property [x integer]
+				(= x x))))))
+{% endhighlight %}
