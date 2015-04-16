@@ -74,7 +74,7 @@
    (choose-integer Short/MIN_VALUE Short/MAX_VALUE)))
 
 (def choose-long
-  "Generator for shorts in [-2147483648, 2147483647]."
+  "Generator for longs in [-9223372036854775808, 9223372036854775807]."
   (lift->generator
    long
    (choose-integer Long/MIN_VALUE Long/MAX_VALUE)))

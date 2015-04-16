@@ -122,10 +122,10 @@
   (testing "arbitrary-long generates only longs."
     (is
      (quickcheck
-      (property [x short]
+      (property [x long]
                 (and (integer? x)
-                     (>= x -2147483648)
-                     (<= x 2147483647)))))))
+                     (>= x -9223372036854775808)
+                     (<= x 9223372036854775807)))))))
 
 (deftest integer-from-toq
   (testing "arbitrary-integer-from-to generates only longs."
