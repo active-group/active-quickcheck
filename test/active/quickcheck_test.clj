@@ -109,6 +109,15 @@
                      (>= x -128)
                      (<= x 127)))))))
 
+(deftest unsigned-byteq
+  (testing "arbitrary-unsigned-byte generates only unsigned bytes."
+    (is
+     (quickcheck
+      (property [x unsigned-byte]
+                (and (integer? x)
+                     (>= x 0)
+                     (<= x 255)))))))
+
 (deftest shortq
   (testing "arbitrary-short generates only shorts."
     (is
@@ -117,6 +126,15 @@
                 (and (integer? x)
                      (>= x -32768)
                      (<= x 32767)))))))
+
+(deftest unsigned-shortq
+  (testing "arbitrary-unsigned-short generates only unsigned shorts."
+    (is
+     (quickcheck
+      (property [x unsigned-short]
+                (and (integer? x)
+                     (>= x 0)
+                     (<= x 65535)))))))
 
 (deftest intq
   (testing "arbitrary-long generates only longs."
@@ -127,6 +145,15 @@
                      (>= x -2147483648)
                      (<= x 2147483647)))))))
 
+(deftest unsigned-intq
+  (testing "arbitrary-unsigned-int generates only unsigned ints."
+    (is
+     (quickcheck
+      (property [x unsigned-int]
+                (and (integer? x)
+                     (>= x 0)
+                     (<= x 4294967295)))))))
+
 (deftest longq
   (testing "arbitrary-long generates only longs."
     (is
@@ -135,6 +162,15 @@
                 (and (integer? x)
                      (>= x -9223372036854775808)
                      (<= x 9223372036854775807)))))))
+
+(deftest unsigned-longq
+  (testing "arbitrary-unsigned-long generates only unsigned longs."
+    (is
+     (quickcheck
+      (property [x unsigned-long]
+                (and (integer? x)
+                     (>= x 0)
+                     (<= x 18446744073709551615)))))))
 
 (deftest integer-from-toq
   (testing "arbitrary-integer-from-to generates only longs."

@@ -67,11 +67,23 @@
    byte
    (choose-integer Byte/MIN_VALUE Byte/MAX_VALUE)))
   
+(def choose-unsigned-byte
+  "Generator for bytes in [0, 255]."
+  (lift->generator
+   short
+   (choose-integer 0 (- (expt 2 Byte/SIZE) 1))))
+  
 (def choose-short
   "Generator for shorts in [-32768, 32767]."
   (lift->generator
    short
    (choose-integer Short/MIN_VALUE Short/MAX_VALUE)))
+
+(def choose-unsigned-short
+  "Generator for bytes in [0, 65535]."
+  (lift->generator
+   int
+   (choose-integer 0 (- (expt 2 Short/SIZE) 1))))
 
 (def choose-int
   "Generator for ints in [-2147483648, 2147483647]."
@@ -79,11 +91,23 @@
    int
    (choose-integer Integer/MIN_VALUE Integer/MAX_VALUE)))
 
+(def choose-unsigned-int
+  "Generator for bytes in [0, 4294967295]."
+  (lift->generator
+   long
+   (choose-integer 0 (- (expt 2 Integer/SIZE) 1))))
+
 (def choose-long
   "Generator for longs in [-9223372036854775808, 9223372036854775807]."
   (lift->generator
    long
    (choose-integer Long/MIN_VALUE Long/MAX_VALUE)))
+
+(def choose-unsigned-long
+  "Generator for bytes in [0, 18446744073709551615]."
+  (lift->generator
+   bigint
+   (choose-integer 0 (- (expt 2 Long/SIZE) 1))))
 
 (defn choose-float
   "Generator for floats within a range, bounds are inclusive."
@@ -356,6 +380,22 @@
   "Arbitrary long."
   (arbitrary-int-like choose-long long))
 
+(def arbitrary-unsigned-byte
+  "Arbitrary unsigned byte."
+  (arbitrary-int-like choose-unsigned-byte short))
+
+(def arbitrary-unsigned-short
+  "Arbitrary unsigned short."
+  (arbitrary-int-like choose-unsigned-short int))
+
+(def arbitrary-unsigned-int
+  "Arbitrary unsigned int."
+  (arbitrary-int-like choose-unsigned-int long))
+
+(def arbitrary-unsigned-long
+  "Arbitrary unsigned long."
+  (arbitrary-int-like choose-unsigned-long bigint))
+
 (def arbitrary-ascii-char
   "Arbitrary ASCII character."
   (arbitrary-int-like choose-ascii-char int))
@@ -603,6 +643,18 @@ the operator."
 (defmethod expand-arbitrary 'long [form]
   `arbitrary-long)
 
+(defmethod expand-arbitrary 'unsigned-byte [form]
+  `arbitrary-unsigned-byte)
+
+(defmethod expand-arbitrary 'unsigned-short [form]
+  `arbitrary-unsigned-short)
+
+(defmethod expand-arbitrary 'unsigned-int [form]
+  `arbitrary-unsigned-int)
+
+(defmethod expand-arbitrary 'unsigned-long [form]
+  `arbitrary-unsigned-long)
+
 (defmethod expand-arbitrary 'natural [form]
   `arbitrary-natural)
 
@@ -707,7 +759,9 @@ This is usually used implicitly via the property macro.
 
 The argument form can be one of the following:
 
-- boolean, integer, short, int, long, natural, rational, float, char, ascii-char,
+- boolean, integer, byte, short, int, long, 
+  unsigned byte, unsigned-short, unsigned-int, unsigned-long
+  natural, rational, float, char, ascii-char,
   printable-ascii-char, string, ascii-string, printable-ascii-string,
   byte-array, symbol, keyword
 - (one-of <equality> <expr> ...)
