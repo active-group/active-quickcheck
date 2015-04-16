@@ -17,11 +17,11 @@ from John Hughes's original paper.
 
 ## Releases and Dependency Information
 
-Latest stable release: 0.2.0
+Latest stable release: 0.3.0
 
 [Leiningen](https://github.com/technomancy/leiningen) dependency information:
 
-    [active-quickcheck "0.2.0"]
+    [active-quickcheck "0.3.0"]
 
 ## Usage
 
