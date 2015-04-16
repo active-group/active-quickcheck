@@ -118,6 +118,15 @@
                      (>= x -32768)
                      (<= x 32767)))))))
 
+(deftest intq
+  (testing "arbitrary-long generates only longs."
+    (is
+     (quickcheck
+      (property [x int]
+                (and (integer? x)
+                     (>= x -2147483648)
+                     (<= x 2147483647)))))))
+
 (deftest longq
   (testing "arbitrary-long generates only longs."
     (is

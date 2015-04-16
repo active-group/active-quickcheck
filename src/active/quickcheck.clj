@@ -73,6 +73,12 @@
    short
    (choose-integer Short/MIN_VALUE Short/MAX_VALUE)))
 
+(def choose-int
+  "Generator for ints in [-2147483648, 2147483647]."
+  (lift->generator
+   int
+   (choose-integer Integer/MIN_VALUE Integer/MAX_VALUE)))
+
 (def choose-long
   "Generator for longs in [-9223372036854775808, 9223372036854775807]."
   (lift->generator
@@ -342,6 +348,10 @@
   "Arbitrary short."
   (arbitrary-int-like choose-short short))
 
+(def arbitrary-int
+  "Arbitrary int."
+  (arbitrary-int-like choose-int int))
+
 (def arbitrary-long
   "Arbitrary long."
   (arbitrary-int-like choose-long long))
@@ -587,6 +597,9 @@ the operator."
 (defmethod expand-arbitrary 'short [form]
   `arbitrary-short)
 
+(defmethod expand-arbitrary 'int [form]
+  `arbitrary-int)
+
 (defmethod expand-arbitrary 'long [form]
   `arbitrary-long)
 
@@ -694,7 +707,7 @@ This is usually used implicitly via the property macro.
 
 The argument form can be one of the following:
 
-- boolean, integer, short, long, natural, rational, float, char, ascii-char,
+- boolean, integer, short, int, long, natural, rational, float, char, ascii-char,
   printable-ascii-char, string, ascii-string, printable-ascii-string,
   byte-array, symbol, keyword
 - (one-of <equality> <expr> ...)
