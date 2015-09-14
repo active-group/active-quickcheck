@@ -12,32 +12,32 @@
       :doc "A QuickCheck clone for Clojure."}
   active.quickcheck
   (:use active.random)
+  (:require [active.clojure.record :refer :all])
   (:use clojure.math.numeric-tower)
   (:use clojure.algo.monads)
   (:use [clojure.test :only [assert-expr do-report]]))
 
-(defrecord
-    ^{:doc "Generator monad for random values."}
-    Generator
-    ;; int(size) random-generator -> val
-    [func])
+(define-record-type Generator
+  ^{:doc "Generator monad for random values."}
+  (make-generator func)
+  generator?
+  [func generator-func])
 
 (defn return
   "Monadic return for generators."
   [val]
-  (Generator.
-   (fn [size rgen]
-     val)))
+  (make-generator 
+    (fn [size rgen] val)))
 
 (defn bind
   "Monadic bind for generators."
   [m1 k]
-  (let [func1 (:func m1)]
-    (Generator.
-     (fn [size rgen]
+  (let [func1 (generator-func m1)]
+    (make-generator
+      (fn [size rgen]
        (let [[rgen1 rgen2] (random-generator-split rgen)]
          (let [gen (k (func1 size rgen1))]
-           ((:func gen) size rgen2)))))))
+           ((generator-func gen) size rgen2)))))))
 
 (defmonad 
   ^{:doc "Generator monad instance for clojure.algo.monads."}
@@ -56,7 +56,7 @@
 (defn choose-integer
   "Generator for integers within a range, bounds are inclusive."
   [lower upper]
-  (Generator.
+  (make-generator
    (fn [size rgen]
      (let [[n _] (random-integer rgen lower upper)]
        n))))
@@ -112,8 +112,8 @@
 (defn choose-float
   "Generator for floats within a range, bounds are inclusive."
   [lower upper]
-  (Generator.
-   (fn [size rgen]
+  (make-generator
+  (fn [size rgen]
      (let [[n _] (random-float rgen lower upper)]
        n))))
 
@@ -132,7 +132,7 @@
 
 (defn- choose-char-with-property
   [pred]
-  (Generator.
+  (make-generator
    (fn [size rgen]
      ;; loop until proper char is found; otherwise we could build a
      ;; map of all chars, but that's not that good either.
@@ -164,7 +164,7 @@
 (defn choose-char
   "Generator for chars within a range, bonds are inclusive."
   [lower upper]
-  (Generator.
+  (make-generator
    (fn [size rgen]
      (let [[n _] (random-integer rgen
                                  (int lower) (int upper))]
@@ -174,8 +174,8 @@
 (defn variant
   "Make generator that transforms random number seed depending on v."
   [v gen]
-  (let [func (:func gen)]
-    (Generator.
+  (let [func (generator-func gen)]
+    (make-generator
      (fn [size rgen]
        (loop [v (+ 1 v)
               rgen rgen]
@@ -189,32 +189,32 @@
   "Extract a value from a generator, using size n and random generator rgen."
   [n rgen gen]
   (let [[size nrgen] (random-integer rgen 0 n)]
-    ((:func gen) size nrgen)))
+    ((generator-func gen) size nrgen)))
 
 ; (vals -> (generator b)) -> (generator (vals -> b))
 (defn promote
   "Promote a function to generators to a generator of functions."
   [func] 
-  (Generator.
+  (make-generator
    (fn [size rgen]
      (fn [& vals]
        (let [g (apply func vals)]
-         ((:func g) size rgen))))))
+         ((generator-func g) size rgen))))))
 
 ; (int -> (generator a)) -> (generator a)
 (defn sized
   "Apply a size to a generator."
   [func]
-  (Generator.
+  (make-generator
    (fn [size rgen]
      (let [g (func size)]
-       ((:func g) size rgen)))))
+       ((generator-func g) size rgen)))))
 
 (defn resize
   "Make a generator with a specified size."
   [size gen]
-  (let [f (:func gen)]
-    (Generator.
+  (let [f (generator-func gen)]
+    (make-generator
      (fn [_size rgen]
        (f size rgen)))))
 
@@ -312,57 +312,64 @@
       (second f)
       (recur (- n k) (rest lis)))))
 
-(defrecord Arbitrary
+(define-record-type Arbitrary
     ^{:doc "Generalization of generator, suitable for producing function generators."}
-    [;; (generator a)
-     generator
-     ;; a (generator b) -> (generator b)
-     transformer])
+    (make-arbitrary 
+      generator ;; (generator a)
+      transformer) ;; a (generator b) -> (generator b)
+    arbitrary?
+    [generator arbitrary-generator
+     transformer arbitrary-transformer])
 
 (defn coarbitrary
   [arb val gen]
   "Modify a generator depending on val parameter."
-  ((:transformer arb) val gen))
+  ((arbitrary-transformer arb) val gen))
 
 (def arbitrary-boolean
   "Arbitrary boolean."
-  (Arbitrary. (choose-one-of '(true false))
-              (fn [a gen]
-                (variant (if a 0 1) gen))))
+  (make-arbitrary
+    (choose-one-of '(true false))
+    (fn [a gen]
+      (variant (if a 0 1) gen))))
 
 (def arbitrary-integer
   "Arbitrary integer."
-  (Arbitrary. (sized
-               (fn [n]
-                 (choose-integer (- n) n)))
-              (fn [n gen]
-                (variant (if (>= n 0)
-                           (* 2 n)
-                           (+ (* 2 (- n)) 1))
-                         gen))))
+  (make-arbitrary
+    (sized
+     (fn [n]
+       (choose-integer (- n) n)))
+    (fn [n gen]
+      (variant (if (>= n 0)
+                 (* 2 n)
+                 (+ (* 2 (- n)) 1))
+               gen))))
 
 (def arbitrary-natural
   "Arbitrary natural number."
-  (Arbitrary. (sized
-               (fn [n]
-                 (choose-integer 0 n)))
-              (fn [n gen]
-                (variant n gen))))
+  (make-arbitrary
+    (sized
+     (fn [n]
+       (choose-integer 0 n)))
+    (fn [n gen]
+      (variant n gen))))
 
 (defn arbitrary-integer-from-to
   "Arbitrary integer from range."
   [from to]
-  (Arbitrary. (sized
-               (fn [n]
-                 (choose-integer from to)))
-              (fn [n gen]
-                (variant (- n from) gen))))
+  (make-arbitrary
+    (sized
+     (fn [n]
+       (choose-integer from to)))
+    (fn [n gen]
+      (variant (- n from) gen))))
 
 (defn- arbitrary-int-like
   [gen to-int]
-  (Arbitrary. gen
-              (fn [v rgen]
-                (variant (to-int v) rgen))))
+  (make-arbitrary 
+    gen
+    (fn [v rgen]
+      (variant (to-int v) rgen))))
 
 (def arbitrary-byte
   "Arbitrary byte."
@@ -422,14 +429,15 @@
 
 (def arbitrary-rational
   "Arbitrary rational number."
-  (Arbitrary. (lift->generator make-rational
-                               (:generator arbitrary-integer)
-                               (:generator arbitrary-natural))
-              (fn [^clojure.lang.Ratio r gen]
-                (coarbitrary arbitrary-integer
-                             (.numerator r)
-                             (coarbitrary arbitrary-integer
-                                          (.denominator r) gen)))))
+  (make-arbitrary
+    (lift->generator make-rational
+                     (arbitrary-generator arbitrary-integer)
+                     (arbitrary-generator arbitrary-natural))
+    (fn [^clojure.lang.Ratio r gen]
+      (coarbitrary arbitrary-integer
+                   (.numerator r)
+                   (coarbitrary arbitrary-integer
+                                (.denominator r) gen)))))
 
 (defn- fraction
   [a b c]
@@ -439,92 +447,98 @@
 
 (def arbitrary-float
   "Arbitrary float."
-  (Arbitrary. (lift->generator fraction
-                               (:generator arbitrary-integer)
-                               (:generator arbitrary-integer)
-                               (:generator arbitrary-integer))
-              (fn [r gen]
-                (let [^clojure.lang.Ratio fr (rationalize r)]
-                  (coarbitrary arbitrary-integer
-                               (.numerator fr)
-                               (coarbitrary arbitrary-integer
-                                            (.denominator fr) gen))))))
+  (make-arbitrary
+    (lift->generator fraction
+                     (arbitrary-generator arbitrary-integer)
+                     (arbitrary-generator arbitrary-integer)
+                     (arbitrary-generator arbitrary-integer))
+    (fn [r gen]
+      (let [^clojure.lang.Ratio fr (rationalize r)]
+        (coarbitrary arbitrary-integer
+                     (.numerator fr)
+                     (coarbitrary arbitrary-integer
+                                  (.denominator fr) gen))))))
 
 (declare coerce->generator)
 
 (defn arbitrary-mixed
   "Arbitrary value from one of a list of (promises of) arbitraries."
   [pred+arbitrary-promise-list]
-  (Arbitrary. (choose-mixed (map #(delay (coerce->generator (force (second %))))
-                                 pred+arbitrary-promise-list))
-              (fn [val gen]
-                (loop [lis pred+arbitrary-promise-list
-                       n 0]
-                   (cond
-                    (not (seq lis)) (throw (Error. "arbitrary-mixed: value matches none of the predicates"))
-                    ((first (first lis)) val) (variant n gen)
-                    :else (recur (rest lis) (+ 1 n)))))))
+  (make-arbitrary
+    (choose-mixed (map #(delay (coerce->generator (force (second %))))
+                       pred+arbitrary-promise-list))
+    (fn [val gen]
+      (loop [lis pred+arbitrary-promise-list
+             n 0]
+         (cond
+          (not (seq lis)) (throw (Error. "arbitrary-mixed: value matches none of the predicates"))
+          ((first (first lis)) val) (variant n gen)
+          :else (recur (rest lis) (+ 1 n)))))))
 
 (defn arbitrary-one-of
   "Arbitrary value from a list of values, and equality predicate."
   [eql? & vals]
-  (Arbitrary. (choose-one-of vals)
-              (fn [val gen]
-                (loop [lis vals
-                       n 0]
-                   (cond
-                    (not (seq lis)) (throw (Error. "arbitrary-one-of: value matches none of the predicates"))
-                    (eql? (first lis) val) (variant n gen)
-                    :else (recur (rest lis) (+ 1 n)))))))
+  (make-arbitrary
+    (choose-one-of vals)
+    (fn [val gen]
+      (loop [lis vals
+             n 0]
+         (cond
+          (not (seq lis)) (throw (Error. "arbitrary-one-of: value matches none of the predicates"))
+          (eql? (first lis) val) (variant n gen)
+          :else (recur (rest lis) (+ 1 n)))))))
 
 (defn arbitrary-tuple
   "Arbitrary fixed-size vector."
   [& arbitrary-els]
-  (Arbitrary. (apply lift->generator
-                     vector
-                     (map :generator arbitrary-els))
-              (fn [lis gen]
-                (letfn [(recurse [arbitrary-els lis]
-                          (if (seq arbitrary-els)
-                            ((:transformer (first arbitrary-els))
-                             (first lis)
-                             (recurse (rest arbitrary-els)
-                                      (rest lis)))
-                            gen))]
-                  (recurse arbitrary-els lis)))))
+  (make-arbitrary
+    (apply lift->generator
+           vector
+           (map arbitrary-generator arbitrary-els))
+    (fn [lis gen]
+      (letfn [(recurse [arbitrary-els lis]
+                (if (seq arbitrary-els)
+                  ((arbitrary-transformer (first arbitrary-els))
+                   (first lis)
+                   (recurse (rest arbitrary-els)
+                            (rest lis)))
+                  gen))]
+        (recurse arbitrary-els lis)))))
                            
 (defn arbitrary-record
   "Arbitrary record."
   [construct accessors & arbitrary-els]
-  (Arbitrary. (apply lift->generator
-                     construct
-                     (map :generator arbitrary-els))
-              (fn [rec gen]
-                (letfn [(recurse [arbitrary-els lis]
-                          (if (seq arbitrary-els)
-                            ((:transformer (first arbitrary-els))
-                             (first lis)
-                             (recurse (rest arbitrary-els) (rest lis)))
-                            gen))]
-                  (recurse arbitrary-els
-                           (map #(% rec) accessors))))))
+  (make-arbitrary
+    (apply lift->generator
+           construct
+           (map arbitrary-generator arbitrary-els))
+    (fn [rec gen]
+      (letfn [(recurse [arbitrary-els lis]
+                (if (seq arbitrary-els)
+                  ((arbitrary-transformer (first arbitrary-els))
+                   (first lis)
+                   (recurse (rest arbitrary-els) (rest lis)))
+                  gen))]
+        (recurse arbitrary-els
+                 (map #(% rec) accessors))))))
 
 (defn arbitrary-sequence-like
   "Arbitrary sequence-like container."
   [choose-sequence sequence->list arbitrary-el]
-  (Arbitrary. (sized
-               (fn [n]
-                 (bind (choose-integer 0 n)
-                       (fn [length]
-                         (choose-sequence (:generator arbitrary-el) length)))))
-              (fn [sequ gen]
-                (letfn [(recurse [lis]
-                          (if (seq lis)
-                            ((:transformer arbitrary-el)
-                             (first lis)
-                             (variant 1 (recurse (rest lis))))
-                            (variant 0 gen)))]
-                  (recurse (sequence->list sequ))))))
+  (make-arbitrary
+    (sized
+     (fn [n]
+       (bind (choose-integer 0 n)
+             (fn [length]
+               (choose-sequence (arbitrary-generator arbitrary-el) length)))))
+     (fn [sequ gen]
+       (letfn [(recurse [lis]
+                 (if (seq lis)
+                   ((arbitrary-transformer arbitrary-el)
+                    (first lis)
+                    (variant 1 (recurse (rest lis))))
+                   (variant 0 gen)))]
+         (recurse (sequence->list sequ))))))
 
 (defn arbitrary-list
   "Arbitrary list."
@@ -581,26 +595,28 @@
   "Arbitrary function."
   [arbitrary-result & arbitrary-args]
   (let [arbitrary-arg-tuple (apply arbitrary-tuple arbitrary-args)]
-    (Arbitrary. (promote
-                 (fn [& args]
-                   ((:transformer arbitrary-arg-tuple)
-                    args
-                    (:generator arbitrary-result))))
-                (fn [func gen]
-                  (domonad generator-m
-                           [args (:generator arbitrary-arg-tuple)
-                            t
-                            ((:transformer arbitrary-result)
-                             (apply func args)
-                             gen)]
-                           t)))))
+    (make-arbitrary
+      (promote
+       (fn [& args]
+         ((arbitrary-transformer arbitrary-arg-tuple)
+          args
+          (arbitrary-generator arbitrary-result))))
+      (fn [func gen]
+        (domonad generator-m
+                 [args (arbitrary-generator arbitrary-arg-tuple)
+                  t
+                  ((arbitrary-transformer arbitrary-result)
+                   (apply func args)
+                   gen)]
+                 t)))))
 
-(defrecord ^{:doc "QuickCheck property"}
-    Property
-    [func
-     arg-names
-     ;; (seq (union arbitrary generator))
-     args])
+(define-record-type Property ^{:doc "QuickCheck property"}
+  (make-property func arg-names args)
+  property?
+  [func property-func
+   arg-names property-arg-names
+   ;; (seq (union arbitrary generator))
+   args property-args])
 
 (defmulti expand-arbitrary
   "Multimethod to expand `arbitrary' forms.
@@ -792,32 +808,34 @@ saying whether the property is satisfied."
   (let [pairs (partition 2 clauses)
         ids (map first pairs)
         rhss (map second pairs)]
-    `(Property. (fn [~@ids]
-                  ~body0 ~@bodies)
-                '~ids
-                (list ~@(map (fn [rhs] `(arbitrary ~rhs)) rhss)))))
+    `(make-property
+       (fn [~@ids]
+         ~body0 ~@bodies)
+       '~ids
+     (list ~@(map (fn [rhs] `(arbitrary ~rhs)) rhss)))))
 
-(defrecord ^{:doc "Result from a QuickCheck run."}
-    Check-result
-    [
-     ;; nil = unknown, true, false
-     ok
-     stamp
-     ;; (list (list (pair (union #f symbol) value)))
-     arguments-list])
+(define-record-type Check-result ^{:doc "Result from a QuickCheck run."}
+  (make-check-result ok stamp arguments-list)
+  check-result?
+  [
+   ;; nil = unknown, true, false
+   ok check-result-ok
+   stamp check-result-stamp
+   ;; (list (list (pair (union #f symbol) value)))
+   arguments-list check-result-arguments-list])
 
 (defn- result-add-stamp
   [res stamp]
-  (assoc res :stamp (conj (:stamp res) stamp)))
+  (assoc res :stamp (conj (check-result-stamp res) stamp)))
 
 ; result (list (pair (union #f symbol) value)) -> result
 (defn- result-add-arguments
   [res args]
   (assoc res :arguments-list
-         (conj (:arguments-list res) args)))
+         (conj (check-result-arguments-list res) args)))
 
 (def nothing
-  (Check-result. nil [] []))
+  (make-check-result nil [] []))
 
 
 ; A testable value is one of the following:
@@ -831,8 +849,8 @@ saying whether the property is satisfied."
   "Coerce an object to a result generator."
   [thing]
   (cond
-   (instance? Property thing) (for-all-with-names (:func thing) (:arg-names thing)
-                                (:args thing))
+   (instance? Property thing) (for-all-with-names (property-func thing) (property-arg-names thing)
+                                (property-args thing))
    (instance? Boolean thing) (return (assoc nothing :ok thing))
    (instance? Check-result thing) (return thing)
    (instance? Generator thing) thing
@@ -843,7 +861,7 @@ saying whether the property is satisfied."
   [thing]
   (cond
    (instance? Generator thing) thing
-   (instance? Arbitrary thing) (:generator thing)
+   (instance? Arbitrary thing) (arbitrary-generator thing)
    :else (throw (Error. (str "cannot be coerced to a generator: " thing)))))
 
 
@@ -898,26 +916,32 @@ saying whether the property is satisfied."
   
 ; Running the whole shebang
 
-(defrecord ^{:doc "Configuration for a series of QuickCheck test runs."}
-    Config
-    [max-test max-fail size print-every])
+(define-record-type Config ^{:doc "Configuration for a series of QuickCheck test runs."}
+  (make-config max-test max-fail size print-every)
+  make-config?
+  [max-test make-config-max-test
+   max-fail make-config-max-fail
+   size make-config-size
+   print-every make-config-print-every])
 
 (def quick
   "Quick test-run configuration with minimal output."
-  (Config. 100
-           1000
-           #(+ 3 (quot % 2))
-           (fn [n args] nil)))
+  (make-config
+    100
+    1000
+    #(+ 3 (quot % 2))
+    (fn [n args] nil)))
 
 (def verbose
   "Quick test-run configuration with verbose output."
-  (Config. 100
-           1000
-           #(+ 3 (quot % 2))
-           (fn [n args]
-             (print n)
-             (println ":")
-             (doseq [x args] (println x)))))
+  (make-config
+    100
+    1000
+    #(+ 3 (quot % 2))
+    (fn [n args]
+      (print n)
+      (println ":")
+      (doseq [x args] (println x)))))
 
 (declare tests)
 
@@ -958,15 +982,15 @@ returns three values:
          nfail nfail
          stamps stamps]
     (cond
-     (= ntest (:max-test config)) (list ntest stamps true)
-     (= nfail (:max-fail config)) (list nfail stamps false)
+     (= ntest (make-config-max-test config)) (list ntest stamps true)
+     (= nfail (make-config-max-fail config)) (list nfail stamps false)
      :else
      (let [[rgen1 rgen2] (random-generator-split rgen)
-           result (generate ((:size config) ntest) rgen2 gen)]
-       ((:print-every config) ntest (:arguments-list result))
-       (case (:ok result)
+           result (generate ((make-config-size config) ntest) rgen2 gen)]
+       ((make-config-print-every config) ntest (check-result-arguments-list result))
+       (case (check-result-ok result)
          nil (recur rgen1 ntest (+ 1 nfail) stamps)
-         true (recur rgen1 (+ 1 ntest) nfail (conj stamps (:stamp result)))
+         true (recur rgen1 (+ 1 ntest) nfail (conj stamps (check-result-stamp result)))
          false (list ntest stamps result))))))
 
 (declare done write-arguments)
@@ -981,7 +1005,7 @@ returns three values:
       (print "Falsifiable, after ")
       (print ntest)
       (println " tests:")
-      (doseq [a (:arguments-list maybe-result)]
+      (doseq [a (check-result-arguments-list maybe-result)]
         (write-arguments a)))))
 
 ; (pair (union nil symbol) value)
@@ -1082,4 +1106,4 @@ returns three values:
          (do-report {:type :fail,
                      :message (str "falsifiable")
                      :expected prop-sexpr#
-                     :actual (:arguments-list success#)})))))
+                     :actual (check-result-arguments-list success#)})))))

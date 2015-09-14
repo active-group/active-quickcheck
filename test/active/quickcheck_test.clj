@@ -1,5 +1,5 @@
 (ns active.quickcheck-test
-  (:use clojure.test)
+  (:require [clojure.test :refer :all])
   (:use active.quickcheck))
 
 (defn check-quick
