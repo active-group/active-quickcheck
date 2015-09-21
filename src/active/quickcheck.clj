@@ -13,53 +13,40 @@
   active.quickcheck
   (:use active.random)
   (:require [active.clojure.record :refer :all])
+  (:require [active.clojure.monad :refer :all :as monad])
+  (:require [active.clojure.condition :as c])
   (:use clojure.math.numeric-tower)
-  (:use clojure.algo.monads)
   (:use [clojure.test :only [assert-expr do-report]]))
-
-(define-record-type Generator
-  ^{:doc "Generator monad for random values."}
-  (make-generator func)
-  generator?
-  [func generator-func])
-
-(defn return
-  "Monadic return for generators."
-  [val]
-  (make-generator 
-    (fn [size rgen] val)))
-
-(defn bind
-  "Monadic bind for generators."
-  [m1 k]
-  (let [func1 (generator-func m1)]
-    (make-generator
-      (fn [size rgen]
-       (let [[rgen1 rgen2] (random-generator-split rgen)]
-         (let [gen (k (func1 size rgen1))]
-           ((generator-func gen) size rgen2)))))))
-
-(defmonad 
-  ^{:doc "Generator monad instance for clojure.algo.monads."}
-  generator-m
-  [m-result return
-   m-bind bind])
 
 (defn lift->generator
   "Lift a function on values to generators."
   [func & gens]
-  (domonad generator-m
-           [vals (m-seq gens)]
-           (apply func vals)))
+  (monadic
+    [vals (monad/sequ gens)]
+    (monad/return (apply func vals))))
            
+(define-record-type Get-random-generator-type
+  ^{:doc "Get the random generator."}
+  (make-get-random-generator)
+  get-random-generator?
+  [])
+(def get-random-generator (make-get-random-generator))
+
+(define-record-type Get-size-type
+  ^{:doc "Get the size of the random generator."}
+  (make-get-size)
+  get-size?
+  [])
+(def get-size (make-get-size))
+
 ; [lower, upper]
 (defn choose-integer
   "Generator for integers within a range, bounds are inclusive."
   [lower upper]
-  (make-generator
-   (fn [size rgen]
-     (let [[n _] (random-integer rgen lower upper)]
-       n))))
+  (monadic
+    [rgen get-random-generator]
+    (let [[n _] (random-integer rgen lower upper)])
+    (monad/return n)))
 
 (def choose-byte
   "Generator for bytes in [-128, 127]."
@@ -112,10 +99,10 @@
 (defn choose-float
   "Generator for floats within a range, bounds are inclusive."
   [lower upper]
-  (make-generator
-  (fn [size rgen]
-     (let [[n _] (random-float rgen lower upper)]
-       n))))
+  (monadic
+    [rgen get-random-generator]
+    (let [[n _] (random-float rgen lower upper)])
+    (monad/return n)))
 
 (def choose-ascii-char
   "Generator for ASCII characters."
@@ -132,16 +119,16 @@
 
 (defn- choose-char-with-property
   [pred]
-  (make-generator
-   (fn [size rgen]
-     ;; loop until proper char is found; otherwise we could build a
-     ;; map of all chars, but that's not that good either.
-     (loop [rg rgen]
-       (let [[i ngen] (random-integer rg 0 0xffff)
-             c (char i)]
-         (if (pred c)
-           c
-           (recur ngen)))))))
+  (monadic
+    [rgen get-random-generator]
+;   ;; loop until proper char is found; otherwise we could build a
+;   ;; map of all chars, but that's not that good either.
+    (loop [rg rgen]
+          (let [[i ngen] (random-integer rg 0 0xffff)
+                c (char i)]
+            (if (pred c)
+             (monad/return c)
+             (recur ngen))))))
 
 (def choose-non-numeric-char
   (letfn [(is-non-numeric? [c]
@@ -164,66 +151,124 @@
 (defn choose-char
   "Generator for chars within a range, bonds are inclusive."
   [lower upper]
-  (make-generator
-   (fn [size rgen]
-     (let [[n _] (random-integer rgen
-                                 (int lower) (int upper))]
-       (char n)))))
+  (monadic
+    [rgen get-random-generator]
+    (let [[n _] (random-integer rgen
+                                   (int lower) (int upper))])
+    (monad/return (char n))))
 
 ; int (generator a) -> (generator a)
-(defn variant
-  "Make generator that transforms random number seed depending on v."
-  [v gen]
-  (let [func (generator-func gen)]
-    (make-generator
-     (fn [size rgen]
-       (loop [v (+ 1 v)
-              rgen rgen]
-         (if (zero? v)
-           (func size rgen)
-           (let [[rgen1 rgen2] (random-generator-split rgen)]
-             (recur (- v 1) rgen2))))))))
+(define-record-type Variant-type
+  ^{:doc "Make generator that transforms random number seed depending on v."}
+  (make-variant v gen) ; int (generator a)
+  variant?
+  [v variant-v
+   gen variant-generator])
+(def variant make-variant)
+
+; (vals -> (generator b)) -> (generator (vals -> b))
+(define-record-type Promote-type
+  ^{:doc "Promote a function to generators to a generator of functions."}
+  (make-promote func) ; vals -> generator b
+  promote?
+  [func promote-func])
+(def promote make-promote)
+
+(define-record-type With-size-type
+  ^{:doc "Make a generator with a specified size."}
+  (make-with-size size generator)
+  with-size?
+  [size with-size-size
+   generator with-size-generator])
+(def resize make-with-size)
 
 ; int random-gen (generator a) -> a
-(defn generate
+(defn generate ; aka run
   "Extract a value from a generator, using size n and random generator rgen."
   [n rgen gen]
   (let [[size nrgen] (random-integer rgen 0 n)]
-    ((generator-func gen) size nrgen)))
-
-; (vals -> (generator b)) -> (generator (vals -> b))
-(defn promote
-  "Promote a function to generators to a generator of functions."
-  [func] 
-  (make-generator
-   (fn [size rgen]
-     (fn [& vals]
-       (let [g (apply func vals)]
-         ((generator-func g) size rgen))))))
+    (letfn [(run [m size rgen]
+      (cond
+        (free-return? m) (free-return-val m)
+                
+        (free-bind? m)
+        (let [m1 (free-bind-monad m)
+              cont (free-bind-cont m)
+              [rgen1 rgen2] (random-generator-split rgen)]
+          (cond
+            (free-return? m1) (recur (cont (free-return-val m1)) size rgen)
+            
+            (free-bind? m1) (c/assertion-violation `run "nested bind; should not happen" m m1)
+            
+            (get-random-generator? m1) (recur (cont rgen2) size rgen1)
+            
+            (get-size? m1) (recur (cont size) size rgen)
+           
+            (with-size? m1)
+            (let [size1 (with-size-size m1)
+                  gen1 (with-size-generator m1)]
+              (recur (cont (run gen1 size1 rgen1)) size rgen2))
+            
+            (variant? m1)
+            (let [v (variant-v m1)
+                  rgen rgen]
+              (loop [v (+ 1 v)
+                     rgen rgen]
+                (if (zero? v)
+                  (run (cont (run (variant-generator m1) size rgen)) size rgen)
+                  (let [[_ rgen2] (random-generator-split rgen)]
+                    (recur (- v 1) rgen2)))))
+            
+            (promote? m1)
+            (recur
+              (cont
+                (let [func (promote-func m1)]
+                  (fn [& vals]
+                     (let [b (run (apply func vals) size rgen1)]
+                       b))))
+              size rgen2)))
+                
+        (get-random-generator? m) rgen
+                
+        (get-size? m) size
+        
+        (with-size? m)
+        (let [size (with-size-size m)
+              gen (with-size-generator m)]
+          (recur gen size rgen))
+                
+        (variant? m)
+        (let [v (variant-v m)
+              rgen rgen]
+          (loop [v (+ 1 v)
+                 rgen rgen]
+            (if (zero? v)
+              (run (variant-generator m) size rgen)
+              (let [[_ rgen2] (random-generator-split rgen)]
+                (recur (- v 1) rgen2)))))
+                
+        (promote? m)
+        (let [func (promote-func m)]
+          (fn [& vals]
+             (let [b (run (apply func vals) size rgen)]
+               b)))
+        ))]
+      (run gen size nrgen))))
 
 ; (int -> (generator a)) -> (generator a)
 (defn sized
   "Apply a size to a generator."
   [func]
-  (make-generator
-   (fn [size rgen]
-     (let [g (func size)]
-       ((generator-func g) size rgen)))))
-
-(defn resize
-  "Make a generator with a specified size."
-  [size gen]
-  (let [f (generator-func gen)]
-    (make-generator
-     (fn [_size rgen]
-       (f size rgen)))))
+  (monadic
+    [size get-size]
+    (func size)))
 
 ; (list a) -> (generator a)
 (defn choose-one-of
   "Make a generator that yields one of a list of values."
   [lis]
   (lift->generator #(nth lis %)
-                   (choose-integer 0 (- (count lis) 1))))
+    (choose-integer 0 (- (count lis) 1))))
 
 ; vector from the paper
 ; (generator a) int -> (generator (list a))
@@ -232,11 +277,11 @@
   [el-gen n]
   (letfn [(recurse [n]
             (if (zero? n)
-              (return '())
-              (domonad generator-m
-                       [val el-gen
-                        rest (recurse (- n 1))]
-                       (conj rest val))))]
+              (monad/return '())
+              (monadic
+                [val el-gen
+                 rest (recurse (- n 1))]
+                (monad/return (conj rest val)))))]
     (recurse n)))
 
 ; (generator char) int -> (generator string)
@@ -249,19 +294,19 @@
 (defn choose-symbol
   "Generator for a symbol with size n+1."
   [n]
-  (domonad generator-m
-           [fst (choose-string choose-non-numeric-char 1)
-            rst (choose-string (choose-mixed (list choose-alphanumeric-char
-                                                   (choose-one-of (seq "*+!-_?"))))
-                               n)]
-           (symbol (str fst rst))))
+  (monadic
+    [fst (choose-string choose-non-numeric-char 1)
+     rst (choose-string (choose-mixed (list choose-alphanumeric-char
+                                        (choose-one-of (seq "*+!-_?"))))
+           n)]
+    (monad/return (symbol (str fst rst)))))
 
 (defn choose-keyword
   "Generator for a keyword with size n+1."
   [n]
-  (domonad generator-m
-           [s (choose-symbol n)]
-           (keyword s)))
+  (monadic
+    [s (choose-symbol n)]
+    (monad/return (keyword s))))
 
 (defn choose-vector
   "Generator for a vector with size n."
@@ -292,16 +337,16 @@
 (defn choose-mixed
   "Generator that chooses from a sequence of generators."
   [gens]
-  (bind (choose-one-of gens) force))
+  (monad/free-bind (choose-one-of gens) force)) ; ???
 
 ; (list (list int (generator a))) -> (generator a)
 (declare pick)
 (defn choose-with-frequencies
   "Generator that chooses from a sequence of (frequency generator) pairs."
   [lis]
-  (domonad generator-m
-           [n (choose-integer 1 (apply + (map first lis)))]
-           (pick n lis)))
+  (monadic
+    [n (choose-integer 1 (apply + (map first lis)))]
+    (monad/return (pick n lis))))
 
 (defn pick
   "Pick an element from a sequence of (frequency, generator) pairs."
@@ -312,14 +357,14 @@
       (second f)
       (recur (- n k) (rest lis)))))
 
-(define-record-type Arbitrary
-    ^{:doc "Generalization of generator, suitable for producing function generators."}
-    (make-arbitrary 
-      generator ;; (generator a)
-      transformer) ;; a (generator b) -> (generator b)
-    arbitrary?
-    [generator arbitrary-generator
-     transformer arbitrary-transformer])
+(define-record-type Arbitrary-type
+  ^{:doc "Generalization of generator, suitable for producing function generators."}
+  (make-arbitrary 
+    generator ;; (generator a)
+    transformer) ;; a (generator b) -> (generator b)
+  arbitrary?
+  [generator arbitrary-generator
+   transformer arbitrary-transformer])
 
 (defn coarbitrary
   [arb val gen]
@@ -337,20 +382,20 @@
   "Arbitrary integer."
   (make-arbitrary
     (sized
-     (fn [n]
-       (choose-integer (- n) n)))
+      (fn [n]
+        (choose-integer (- n) n)))
     (fn [n gen]
       (variant (if (>= n 0)
                  (* 2 n)
                  (+ (* 2 (- n)) 1))
-               gen))))
+        gen))))
 
 (def arbitrary-natural
   "Arbitrary natural number."
   (make-arbitrary
     (sized
-     (fn [n]
-       (choose-integer 0 n)))
+      (fn [n]
+        (choose-integer 0 n)))
     (fn [n gen]
       (variant n gen))))
 
@@ -359,8 +404,8 @@
   [from to]
   (make-arbitrary
     (sized
-     (fn [n]
-       (choose-integer from to)))
+      (fn [n]
+        (choose-integer from to)))
     (fn [n gen]
       (variant (- n from) gen))))
 
@@ -418,46 +463,46 @@
 (def arbitrary-char
   "Arbitrary char."
   (arbitrary-int-like (sized
-                       (fn [n]
-                         (choose-char \u0000 (char (min n 0xffff)))))
-                      int))
+                        (fn [n]
+                          (choose-char \u0000 (char (min n 0xffff)))))
+    int))
 
 (defn- make-rational
   [a b]
   (/ a
-     (+ 1 b)))
+    (+ 1 b)))
 
 (def arbitrary-rational
   "Arbitrary rational number."
   (make-arbitrary
     (lift->generator make-rational
-                     (arbitrary-generator arbitrary-integer)
-                     (arbitrary-generator arbitrary-natural))
+      (arbitrary-generator arbitrary-integer)
+      (arbitrary-generator arbitrary-natural))
     (fn [^clojure.lang.Ratio r gen]
       (coarbitrary arbitrary-integer
-                   (.numerator r)
-                   (coarbitrary arbitrary-integer
-                                (.denominator r) gen)))))
+        (.numerator r)
+        (coarbitrary arbitrary-integer
+          (.denominator r) gen)))))
 
 (defn- fraction
   [a b c]
   (+ a
-     (float (/ b
-               (+ (abs c) 1)))))
+    (float (/ b
+             (+ (abs c) 1)))))
 
 (def arbitrary-float
   "Arbitrary float."
   (make-arbitrary
     (lift->generator fraction
-                     (arbitrary-generator arbitrary-integer)
-                     (arbitrary-generator arbitrary-integer)
-                     (arbitrary-generator arbitrary-integer))
+      (arbitrary-generator arbitrary-integer)
+      (arbitrary-generator arbitrary-integer)
+      (arbitrary-generator arbitrary-integer))
     (fn [r gen]
       (let [^clojure.lang.Ratio fr (rationalize r)]
         (coarbitrary arbitrary-integer
-                     (.numerator fr)
-                     (coarbitrary arbitrary-integer
-                                  (.denominator fr) gen))))))
+          (.numerator fr)
+          (coarbitrary arbitrary-integer
+            (.denominator fr) gen))))))
 
 (declare coerce->generator)
 
@@ -466,11 +511,11 @@
   [pred+arbitrary-promise-list]
   (make-arbitrary
     (choose-mixed (map #(delay (coerce->generator (force (second %))))
-                       pred+arbitrary-promise-list))
+                    pred+arbitrary-promise-list))
     (fn [val gen]
       (loop [lis pred+arbitrary-promise-list
              n 0]
-         (cond
+        (cond
           (not (seq lis)) (throw (Error. "arbitrary-mixed: value matches none of the predicates"))
           ((first (first lis)) val) (variant n gen)
           :else (recur (rest lis) (+ 1 n)))))))
@@ -483,7 +528,7 @@
     (fn [val gen]
       (loop [lis vals
              n 0]
-         (cond
+        (cond
           (not (seq lis)) (throw (Error. "arbitrary-one-of: value matches none of the predicates"))
           (eql? (first lis) val) (variant n gen)
           :else (recur (rest lis) (+ 1 n)))))))
@@ -493,52 +538,52 @@
   [& arbitrary-els]
   (make-arbitrary
     (apply lift->generator
-           vector
-           (map arbitrary-generator arbitrary-els))
+      vector
+      (map arbitrary-generator arbitrary-els))
     (fn [lis gen]
       (letfn [(recurse [arbitrary-els lis]
                 (if (seq arbitrary-els)
                   ((arbitrary-transformer (first arbitrary-els))
-                   (first lis)
-                   (recurse (rest arbitrary-els)
-                            (rest lis)))
+                    (first lis)
+                    (recurse (rest arbitrary-els)
+                      (rest lis)))
                   gen))]
         (recurse arbitrary-els lis)))))
-                           
+
 (defn arbitrary-record
   "Arbitrary record."
   [construct accessors & arbitrary-els]
   (make-arbitrary
     (apply lift->generator
-           construct
-           (map arbitrary-generator arbitrary-els))
+      construct
+      (map arbitrary-generator arbitrary-els))
     (fn [rec gen]
       (letfn [(recurse [arbitrary-els lis]
                 (if (seq arbitrary-els)
                   ((arbitrary-transformer (first arbitrary-els))
-                   (first lis)
-                   (recurse (rest arbitrary-els) (rest lis)))
+                    (first lis)
+                    (recurse (rest arbitrary-els) (rest lis)))
                   gen))]
         (recurse arbitrary-els
-                 (map #(% rec) accessors))))))
+          (map #(% rec) accessors))))))
 
 (defn arbitrary-sequence-like
   "Arbitrary sequence-like container."
   [choose-sequence sequence->list arbitrary-el]
   (make-arbitrary
     (sized
-     (fn [n]
-       (bind (choose-integer 0 n)
-             (fn [length]
-               (choose-sequence (arbitrary-generator arbitrary-el) length)))))
-     (fn [sequ gen]
-       (letfn [(recurse [lis]
-                 (if (seq lis)
-                   ((arbitrary-transformer arbitrary-el)
+      (fn [n]
+        (monad/free-bind (choose-integer 0 n)
+          (fn [length]
+            (choose-sequence (arbitrary-generator arbitrary-el) length)))))
+    (fn [sequ gen]
+      (letfn [(recurse [lis]
+                (if (seq lis)
+                  ((arbitrary-transformer arbitrary-el)
                     (first lis)
                     (variant 1 (recurse (rest lis))))
-                   (variant 0 gen)))]
-         (recurse (sequence->list sequ))))))
+                  (variant 0 gen)))]
+        (recurse (sequence->list sequ))))))
 
 (defn arbitrary-list
   "Arbitrary list."
@@ -578,10 +623,10 @@
 
 (defn- arbitrary-symbol-like
   [choose]
-  (Arbitrary.
-   (sized (fn [n] (choose n)))
-   (fn [v gen]
-     (coarbitrary arbitrary-string (name v) gen))))
+  (make-arbitrary
+    (sized (fn [n] (choose n)))
+    (fn [v gen]
+      (coarbitrary arbitrary-string (name v) gen))))
 
 (def arbitrary-symbol
   "Arbitrary symbol."
@@ -597,20 +642,21 @@
   (let [arbitrary-arg-tuple (apply arbitrary-tuple arbitrary-args)]
     (make-arbitrary
       (promote
-       (fn [& args]
-         ((arbitrary-transformer arbitrary-arg-tuple)
-          args
-          (arbitrary-generator arbitrary-result))))
+        (fn [& args]
+          ((arbitrary-transformer arbitrary-arg-tuple)
+            args
+            (arbitrary-generator arbitrary-result))))
       (fn [func gen]
-        (domonad generator-m
-                 [args (arbitrary-generator arbitrary-arg-tuple)
-                  t
-                  ((arbitrary-transformer arbitrary-result)
-                   (apply func args)
-                   gen)]
-                 t)))))
+        (monadic
+          [args (arbitrary-generator arbitrary-arg-tuple)
+           t
+           ((arbitrary-transformer arbitrary-result)
+             (apply func args)
+             gen)]
+          (monad/return t))))))
 
-(define-record-type Property ^{:doc "QuickCheck property"}
+(define-record-type Property-type
+  ^{:doc "QuickCheck property"}
   (make-property func arg-names args)
   property?
   [func property-func
@@ -626,10 +672,10 @@ and on [op] for compound arbitrary forms, where op is
 the operator."
   (fn [form]
     (cond
-     (symbol? form) form
-     (or (not (seq? form)) (not (seq form))) :default
-     (some #(= '-> %) form) :function
-     :else [(first form)])))
+      (symbol? form) form
+      (or (not (seq? form)) (not (seq form))) :default
+      (some #(= '-> %) form) :function
+      :else [(first form)])))
 
 (defmethod expand-arbitrary :default [form]
   (throw (Exception. (str "invalid expand-arbitrary form: " form))))
@@ -681,7 +727,7 @@ the operator."
   `arbitrary-float)
 
 (defmethod expand-arbitrary 'char [form]
-   `arbitrary-char)
+  `arbitrary-char)
 
 (defmethod expand-arbitrary 'ascii-char [form]
   `arbitrary-ascii-char)
@@ -743,7 +789,7 @@ the operator."
 (defmethod expand-arbitrary '[map] [form]
   (expand-has-arg-count form 2)
   `(arbitrary-map ~(expand-arbitrary (nth form 1))
-                  ~(expand-arbitrary (nth form 2))))
+     ~(expand-arbitrary (nth form 2))))
 
 (defmethod expand-arbitrary '[set] [form]
   (expand-has-arg-count form 1)
@@ -757,7 +803,7 @@ the operator."
       (throw (Exception. "Even number of field operands to record.")))
     (let [pairs (partition 2 ops)]
       `(arbitrary-record ~(nth form 1) (list ~@(map first pairs))
-                         ~@(map expand-arbitrary (map second pairs))))))
+         ~@(map expand-arbitrary (map second pairs))))))
 
 ; (mixed pred arb ...)
 (defmethod expand-arbitrary '[mixed] [form]
@@ -766,7 +812,7 @@ the operator."
     (throw (Exception. "Odd number of operands to mixed.")))
   `(arbitrary-mixed (list ~@(map (fn [[pred arb]]
                                    `(list ~pred (delay ~(expand-arbitrary arb))))
-                                 (partition 2 (rest form))))))
+                              (partition 2 (rest form))))))
 
 (defmacro arbitrary
   "Convenient syntax for constructing arbitraries.
@@ -812,9 +858,10 @@ saying whether the property is satisfied."
        (fn [~@ids]
          ~body0 ~@bodies)
        '~ids
-     (list ~@(map (fn [rhs] `(arbitrary ~rhs)) rhss)))))
+       (list ~@(map (fn [rhs] `(arbitrary ~rhs)) rhss)))))
 
-(define-record-type Check-result ^{:doc "Result from a QuickCheck run."}
+(define-record-type Check-result-type 
+  ^{:doc "Result from a QuickCheck run."}
   (make-check-result ok stamp arguments-list)
   check-result?
   [
@@ -832,11 +879,10 @@ saying whether the property is satisfied."
 (defn- result-add-arguments
   [res args]
   (assoc res :arguments-list
-         (conj (check-result-arguments-list res) args)))
+    (conj (check-result-arguments-list res) args)))
 
 (def nothing
   (make-check-result nil [] []))
-
 
 ; A testable value is one of the following:
 ; - a Property object
@@ -849,52 +895,49 @@ saying whether the property is satisfied."
   "Coerce an object to a result generator."
   [thing]
   (cond
-   (instance? Property thing) (for-all-with-names (property-func thing) (property-arg-names thing)
-                                (property-args thing))
-   (instance? Boolean thing) (return (assoc nothing :ok thing))
-   (instance? Check-result thing) (return thing)
-   (instance? Generator thing) thing
-   :else (throw (Error. (str "cannot be coerced to a result generator: " thing)))))
-
+    (instance? Property-type thing) (for-all-with-names (property-func thing) (property-arg-names thing)
+                                      (property-args thing))
+    (instance? Boolean thing) (monad/return (assoc nothing :ok thing))
+    (instance? Check-result-type thing) (monad/return thing)
+    :else thing )); 
+  
 (defn coerce->generator
   "Coerce an object to a generator."
   [thing]
-  (cond
-   (instance? Generator thing) thing
-   (instance? Arbitrary thing) (arbitrary-generator thing)
-   :else (throw (Error. (str "cannot be coerced to a generator: " thing)))))
-
+  (if (instance? Arbitrary-type thing)
+    (arbitrary-generator thing)
+    thing))
 
 (defn for-all
   "Bind names to generated values."
   [func & args]
-  (domonad generator-m
-           [args (m-seq (map coerce->generator args))
-            res (coerce->result-generator (apply func args))]
-           (result-add-arguments res
-                                 (map #(conj % nil) args))))
+    (monadic
+      [args (monad/sequ (map coerce->generator args))
+       res (coerce->result-generator (apply func args))]
+      (monad/return (result-add-arguments res
+                      (map #(conj % nil) args)))))
 
 (defn for-all-with-names
   "Bind names to generated values, supplying informative names."
   [func arg-names args]
-  (domonad generator-m
-           [args (m-seq (map coerce->generator args))
-            res (coerce->result-generator (apply func args))]
-           (result-add-arguments res (map list arg-names args))))
+  (monadic
+    [args (monad/sequ (map coerce->generator args))
+     res (coerce->result-generator (apply func args))]
+    (monad/return (result-add-arguments res (map list arg-names args)))))
 
 (defmacro ==>
   "Create a property that only has to hold when its prerequisite holds."
   [?bool ?prop]
   `(if ~?bool
      ~?prop
-     (return nothing)))
+     (monad/return nothing)))
 
 (defn label
   "Label a testable value."
   [str testable]
-  (domonad generator-m
-           [res (coerce->result-generator testable)]
-           (result-add-stamp res str)))
+  (monadic
+    [res (coerce->result-generator testable)]
+    (monad/return (result-add-stamp res str))))
 
 (defmacro classify
   "Classify some test cases of a testable."
@@ -913,10 +956,11 @@ saying whether the property is satisfied."
   "Label a testable value with an the string representation of an object."
   [lbl testable]
   (label (str lbl) testable))
-  
+
 ; Running the whole shebang
 
-(define-record-type Config ^{:doc "Configuration for a series of QuickCheck test runs."}
+(define-record-type Config-type
+  ^{:doc "Configuration for a series of QuickCheck test runs."}
   (make-config max-test max-fail size print-every)
   make-config?
   [max-test make-config-max-test
@@ -982,16 +1026,16 @@ returns three values:
          nfail nfail
          stamps stamps]
     (cond
-     (= ntest (make-config-max-test config)) (list ntest stamps true)
-     (= nfail (make-config-max-fail config)) (list nfail stamps false)
-     :else
-     (let [[rgen1 rgen2] (random-generator-split rgen)
-           result (generate ((make-config-size config) ntest) rgen2 gen)]
-       ((make-config-print-every config) ntest (check-result-arguments-list result))
-       (case (check-result-ok result)
-         nil (recur rgen1 ntest (+ 1 nfail) stamps)
-         true (recur rgen1 (+ 1 ntest) nfail (conj stamps (check-result-stamp result)))
-         false (list ntest stamps result))))))
+      (= ntest (make-config-max-test config)) (list ntest stamps true)
+      (= nfail (make-config-max-fail config)) (list nfail stamps false)
+      :else
+      (let [[rgen1 rgen2] (random-generator-split rgen)
+            result (generate ((make-config-size config) ntest) rgen2 gen)]
+        ((make-config-print-every config) ntest (check-result-arguments-list result))
+        (case (check-result-ok result)
+          nil (recur rgen1 ntest (+ 1 nfail) stamps)
+          true (recur rgen1 (+ 1 ntest) nfail (conj stamps (check-result-stamp result)))
+          false (list ntest stamps result))))))
 
 (declare done write-arguments)
 
@@ -1042,24 +1086,24 @@ returns three values:
         entries (map (fn [p]
                        (let [n (first p)
                              lis (rest p)]
-			 (str (quot (* 100 n) ntest)
-                              "% "
-                              (clojure.string/join ", " lis))))
-                     (sort (fn [p1 p2]
-                             (> (first p1) (first p2)))
-                           grouped))]
+                         (str (quot (* 100 n) ntest)
+                           "% "
+                           (clojure.string/join ", " lis))))
+                  (sort (fn [p1 p2]
+                          (> (first p1) (first p2)))
+                    grouped))]
     (cond
-     (not (seq entries)) (println ".")
-     (not (seq (rest entries))) (do
-                                  (print " (")
-                                  (print (first entries))
-                                  (println ")."))
-     :else
-     (do
-       (println ".")
-       (doseq [entry entries]
-         (print entry)
-         (println "."))))))
+      (not (seq entries)) (println ".")
+      (not (seq (rest entries))) (do
+                                   (print " (")
+                                   (print (first entries))
+                                   (println ")."))
+      :else
+      (do
+        (println ".")
+        (doseq [entry entries]
+          (print entry)
+          (println "."))))))
 
 
 (defn- group-sizes
@@ -1072,23 +1116,23 @@ returns three values:
            lis (rest lis)
            res []]
       (cond
-       (not (seq lis)) (reverse (conj res (list size current)))
-       (= current (first lis)) (recur current (+ 1 size) (rest lis) res)
-       :else
-       (recur (first lis) 1 (rest lis) (conj res (list size current)))))))
+        (not (seq lis)) (reverse (conj res (list size current)))
+        (= current (first lis)) (recur current (+ 1 size) (rest lis) res)
+        :else
+        (recur (first lis) 1 (rest lis) (conj res (list size current)))))))
 
 (defn- stamp<?
   "Compare two stamps."
   [s1 s2]
   (cond
-   (not (seq s1)) (seq s2)
-   (not (seq s2)) true
-   :else
-   (let [c (compare (first s1) (first s2))]
-     (cond
-      (< c 0) true
-      (= c 0) (stamp<? (rest s1) (rest s2))
-      :else false))))
+    (not (seq s1)) (seq s2)
+    (not (seq s2)) true
+    :else
+    (let [c (compare (first s1) (first s2))]
+      (cond
+        (< c 0) true
+        (= c 0) (stamp<? (rest s1) (rest s2))
+        :else false))))
 
 (defmethod assert-expr 'quickcheck [msg form]
   ;; (is (quickcheck prop))
