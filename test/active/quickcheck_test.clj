@@ -1,5 +1,6 @@
 (ns active.quickcheck-test
-  (:require [clojure.test :refer :all])
+  (:require [clojure.test :refer :all]
+            [clojure.spec.alpha :as s])
   (:use active.quickcheck))
 
 (defn check-quick
@@ -53,6 +54,44 @@
             (property [xs (list integer)
                        ys (list integer)]
                       (= (reverse (concat ys xs)) (concat (reverse ys) (reverse xs)))))))))
+
+(deftest clojure-spec-simple
+  (testing "clojure spec integer"
+    (is
+      (quickcheck
+        (property [x (spec integer?)]
+                  (integer? x)))))
+  (testing "clojure spec string"
+    (is
+      (quickcheck
+        (property [x (spec string?)]
+                  (string? x)))))
+  (testing "clojure spec keyword"
+    (is
+     (quickcheck
+      (property [x (spec keyword?)]
+                (keyword? x))))))
+
+(deftest clojure-spec-def
+  (s/def ::deffed string?)
+  (is
+   (quickcheck
+    (property [x (spec ::deffed)]
+              (string? x)))))
+
+(deftest clojure-spec-coll-of
+  (testing "coll-of integer?"
+    (is
+      (quickcheck
+        (property [x (spec (s/coll-of integer?))]
+                  (seq? x))))))
+
+(deftest clojure-spec-and-such-that
+  (testing "and integer? even?"
+    (is
+     (quickcheck
+      (property [x (spec (s/and integer? even?))]
+                (and (integer? x) (even? x)))))))
 
 (deftest natural
   (testing "arbitrary-natural generates only natural numbers"
