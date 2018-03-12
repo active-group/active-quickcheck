@@ -15,6 +15,8 @@
   (:require [active.clojure.record :refer :all])
   (:require [active.clojure.monad :refer :all :as monad])
   (:require [active.clojure.condition :as c])
+  (:require [clojure.spec.alpha :as s])
+  (:require [clojure.test :as t])
   (:use clojure.math.numeric-tower)
   (:use [clojure.test :only [assert-expr do-report]]))
 
@@ -378,6 +380,42 @@
     (fn [a gen]
       (variant (if a 0 1) gen))))
 
+
+;; Combinators
+;; -----------
+
+(defn such-that-maybe
+  [gen pred]
+  (letfn [(mytry [k n]
+               (if (= 0 n)
+                 (monadic (monad/return nil))
+                 (monadic [x (resize (+ (* 2 k) n) gen)]
+                          (if (pred x)
+                            (monad/return x)
+                            (mytry (+ k 1) (- n 1))))))]
+    (sized (fn [n] (mytry 0 (max 1 n))))))
+
+(defn such-that-generator
+  [gen pred]
+  (monadic
+   [x (such-that-maybe gen pred)]
+   (if x
+     (monad/return x)
+     (sized (fn [n] (resize (+ n 1) (such-that-generator gen pred)))))))
+
+(defn such-that
+  "Takes a generator and a predicate and
+  returns a new generator that satisfies
+  the predicate."
+  [arb pred]
+  (let [gen (arbitrary-generator arb)
+        newgen (such-that-generator gen pred)]
+    (make-arbitrary newgen nil))) ;; TODO: write coarbitrary implementation
+
+
+;; Arbitraries
+;; -----------
+
 (def arbitrary-integer
   "Arbitrary integer."
   (make-arbitrary
@@ -655,6 +693,89 @@
              gen)]
           (monad/return t))))))
 
+;; spec->arbitrary
+;; ---------------
+
+(declare such-that)
+
+(declare spec->arbitrary)
+
+(defn and->arbitrary
+  [a & args]
+  (let [arb-a (spec->arbitrary a)
+        pred (fn [val] (every? identity (map #((resolve %) val) args)))]
+    (such-that arb-a pred)))
+
+(defn symbol->arbitrary
+  [sym]
+  (cond
+    (= sym `integer?) arbitrary-integer
+    (= sym `string?) arbitrary-string
+    (= sym `keyword?) arbitrary-keyword))
+
+
+(defn fn->arbitrary
+  [fun]
+  (cond
+    (= fun integer?) arbitrary-integer
+    (= fun string?) arbitrary-string
+    (= fun keyword?) arbitrary-keyword))
+
+(defn spec-op->arbitrary
+  "Make an arbitrary from a spec op"
+  [op args]
+  (cond
+    (= op `s/and) (apply and->arbitrary args)
+    (= op `s/coll-of) (arbitrary-list
+                       (spec->arbitrary
+                        (first args)))))
+
+(defn spec-form->arbitrary
+  "Make an arbitrary from a s/formed spec"
+  [form]
+  (if (symbol? form)
+    (symbol->arbitrary form)
+    (let [op (first form)
+          args (rest form)]
+      (spec-op->arbitrary op args))))
+
+(defn spec->data
+  [spec]
+  (cond
+    (keyword? spec)
+    (s/form spec)
+
+    (symbol? spec)
+    spec
+
+    (t/function? spec)
+    `spec
+
+    (satisfies? s/Specize spec)
+    (s/form spec)
+
+    :else
+    (assert false "Unknown spec format"))) 
+
+(defn spec->arbitrary
+  "Make an arbitrary from a clojure spec"
+  [spec]
+  (cond
+    (keyword? spec)
+    (spec-form->arbitrary (s/form spec))
+
+    (symbol? spec)
+    (symbol->arbitrary spec)
+
+    (t/function? spec)
+    (fn->arbitrary spec)
+
+    (satisfies? s/Specize spec)
+    (spec-form->arbitrary (s/form spec))
+
+    :else
+    (assert false "Unknown spec shape")))
+
 (define-record-type Property-type
   ^{:doc "QuickCheck property"}
   (make-property func arg-names args)
@@ -785,6 +906,10 @@ the operator."
 (defmethod expand-arbitrary '[vector] [form]
   (expand-has-arg-count form 1)
   `(arbitrary-vector ~(expand-arbitrary (nth form 1))))
+
+(defmethod expand-arbitrary '[spec] [form]
+  (expand-has-arg-count form 1)
+  `(spec->arbitrary ~(nth form 1)))
 
 (defmethod expand-arbitrary '[map] [form]
   (expand-has-arg-count form 2)

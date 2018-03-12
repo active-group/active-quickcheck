@@ -1,9 +1,10 @@
 (defproject active-quickcheck "0.4.0-SNAPSHOT"
   :description "QuickCheck clone for Clojure"
   :url "http://github.com/active-group/active-quickcheck"
-  :dependencies [[org.clojure/clojure "1.7.0"]
+  :dependencies [[org.clojure/clojure "1.9.0-beta4"]
                  [org.clojure/math.numeric-tower "0.0.2"]
-                 [active-clojure "0.11.0"]]
+                 [org.clojure/test.check "0.9.0"]
+                 [active-clojure "0.22.0"]]
   :plugins [[codox "0.6.4"]]
   :license {:name "Eclipse Public License - v 1.0"
             :url "http://www.eclipse.org/legal/epl-v10.html"
