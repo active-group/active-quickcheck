@@ -709,6 +709,17 @@
         pred (fn [val] (every? identity (map #((myresolve %) val) args)))]
     (such-that arb-a pred)))
 
+(defn coll-of->arbitrary
+  [a & kwargs]
+  (let [opts (apply hash-map kwargs)
+        {kind :kind, :or {kind 'clojure.core/vector?}} opts
+        arb-fn (cond
+                 (= kind 'clojure.core/vector?) arbitrary-vector
+                 (= kind 'clojure.core/list?) arbitrary-list
+                 (= kind 'clojure.core/set?) arbitrary-set)] 
+    (arb-fn
+     (spec->arbitrary a))))
+
 (defn symbol->arbitrary
   [sym]
   (cond
@@ -729,9 +740,7 @@
   [op args]
   (cond
     (= op `s/and) (apply and->arbitrary args)
-    (= op `s/coll-of) (arbitrary-list
-                       (spec->arbitrary
-                        (first args)))))
+    (= op `s/coll-of) (apply coll-of->arbitrary args)))
 
 (defn spec-form->arbitrary
   "Make an arbitrary from a s/formed spec"

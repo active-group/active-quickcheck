@@ -82,9 +82,27 @@
 (deftest clojure-spec-coll-of
   (testing "coll-of integer?"
     (is
-      (quickcheck
-        (property [x (spec (s/coll-of integer?))]
-                  (seq? x))))))
+     (quickcheck
+      (property [x (spec (s/coll-of integer?))]
+                (and (coll? x)
+                     (if (first x)
+                       (integer? (first x))
+                       true))))))
+  (testing "coll-of integer? :kind vector?"
+    (is
+     (quickcheck
+      (property [x (spec (s/coll-of integer? :kind vector?))]
+                (vector? x)))))
+  (testing "coll-of integer? :kind list?"
+    (is
+     (quickcheck
+      (property [x (spec (s/coll-of integer? :kind list?))]
+                (list? x)))))
+  (testing "coll-of integer? :kind set?"
+    (is
+     (quickcheck
+      (property [x (spec (s/coll-of integer? :kind set?))]
+                (set? x))))))
 
 (deftest clojure-spec-and-such-that
   (testing "and integer? even?"
