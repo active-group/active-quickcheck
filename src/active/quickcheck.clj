@@ -697,13 +697,16 @@
 ;; ---------------
 
 (declare such-that)
-
 (declare spec->arbitrary)
 
 (defn and->arbitrary
   [a & args]
   (let [arb-a (spec->arbitrary a)
-        pred (fn [val] (every? identity (map #((resolve %) val) args)))]
+        myresolve (fn [f]
+                    (if (symbol? f)
+                      (resolve f)
+                      (eval f)))
+        pred (fn [val] (every? identity (map #((myresolve %) val) args)))]
     (such-that arb-a pred)))
 
 (defn symbol->arbitrary

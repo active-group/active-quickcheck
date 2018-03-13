@@ -91,7 +91,12 @@
     (is
      (quickcheck
       (property [x (spec (s/and integer? even?))]
-                (and (integer? x) (even? x)))))))
+                (and (integer? x) (even? x))))))
+  (testing "and integer? even? >10"
+    (is
+     (quickcheck
+      (property [x (spec (s/and integer? even? #(> % 10)))]
+                (and (integer? x) (even? x) (> x 10)))))))
 
 (deftest natural
   (testing "arbitrary-natural generates only natural numbers"
