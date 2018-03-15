@@ -102,7 +102,17 @@
     (is
      (quickcheck
       (property [x (spec (s/coll-of integer? :kind set?))]
-                (set? x))))))
+                (set? x)))))
+  (testing "coll-of integer? :count 23"
+    (is
+     (quickcheck
+      (property [x (spec (s/coll-of integer? :count 23))]
+                (= (count x) 23)))))
+  (testing "coll-of integer? :min-count 23 :max-count 25"
+    (is
+     (quickcheck
+      (property [x (spec (s/coll-of integer? :min-count 23 :max-count 25))]
+                (> 26 (count x) 22))))))
 
 (deftest clojure-spec-and-such-that
   (testing "and integer? even?"

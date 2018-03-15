@@ -605,6 +605,29 @@
         (recurse arbitrary-els
           (map #(% rec) accessors))))))
 
+(defn arbitrary-coll-of
+  "Arbitrary collection mimicking Clojure spec's coll-of"
+  [arbitrary-el & kwargs]
+  (let [opts (apply hash-map kwargs)
+        {kind :kind, :or {kind 'clojure.core/vector?}} opts
+        choose-sequence (cond
+                          (= kind 'clojure.core/vector?) choose-vector
+                          (= kind 'clojure.core/list?) choose-list
+                          (= kind 'clojure.core/set?) choose-set)
+        {count :count} opts
+        {min-count :min-count, :or {min-count 0}} opts
+        {max-count :max-count} opts]
+    (make-arbitrary
+     (sized
+      (fn [n]
+        (let [sizer (if count
+                      (monad/return count)
+                      (choose-integer min-count (if max-count max-count n)))]
+          (monad/free-bind sizer
+                           (fn [len]
+                             (choose-sequence (arbitrary-generator arbitrary-el) len))))))
+     nil)))
+
 (defn arbitrary-sequence-like
   "Arbitrary sequence-like container."
   [choose-sequence sequence->list arbitrary-el]
@@ -711,14 +734,7 @@
 
 (defn coll-of->arbitrary
   [a & kwargs]
-  (let [opts (apply hash-map kwargs)
-        {kind :kind, :or {kind 'clojure.core/vector?}} opts
-        arb-fn (cond
-                 (= kind 'clojure.core/vector?) arbitrary-vector
-                 (= kind 'clojure.core/list?) arbitrary-list
-                 (= kind 'clojure.core/set?) arbitrary-set)] 
-    (arb-fn
-     (spec->arbitrary a))))
+  (apply arbitrary-coll-of (into [(spec->arbitrary a)] kwargs)))
 
 (defn symbol->arbitrary
   [sym]
@@ -726,7 +742,6 @@
     (= sym `integer?) arbitrary-integer
     (= sym `string?) arbitrary-string
     (= sym `keyword?) arbitrary-keyword))
-
 
 (defn fn->arbitrary
   [fun]
