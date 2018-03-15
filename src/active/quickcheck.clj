@@ -767,7 +767,6 @@
 (defn spec-op->arbitrary
   "Make an arbitrary from a spec op"
   [op args]
-  (println (pr-str op))
   (cond
     (= op `s/and) (apply and->arbitrary args)
     (= op `s/coll-of) (apply coll-of->arbitrary args)
