@@ -782,24 +782,6 @@
           args (rest form)]
       (spec-op->arbitrary op args))))
 
-(defn spec->data
-  [spec]
-  (cond
-    (keyword? spec)
-    (s/form spec)
-
-    (symbol? spec)
-    spec
-
-    (t/function? spec)
-    `spec
-
-    (satisfies? s/Specize spec)
-    (s/form spec)
-
-    :else
-    (assert false "Unknown spec format"))) 
-
 (defn spec->arbitrary
   "Make an arbitrary from a clojure spec"
   [spec]
