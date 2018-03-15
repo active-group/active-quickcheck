@@ -134,6 +134,14 @@
     (property [x (spec (s/or ::uno ::due))]
               (or (integer? x) (string? x))))))
 
+(deftest clojure-spec-set
+  (is
+   (quickcheck
+    (property [x (spec #{:a :b :c})]
+              (or (= x :a)
+                  (= x :b)
+                  (= x :c))))))
+
 (deftest natural
   (testing "arbitrary-natural generates only natural numbers"
     (is

@@ -781,6 +781,11 @@
           args (rest form)]
       (spec-op->arbitrary op args))))
 
+(defn set->arbitrary
+  "Make an arbitrary from a set (behaviour like enum)"
+  [s]
+  (apply arbitrary-one-of (into [identity] s)))
+
 (defn spec->arbitrary
   "Make an arbitrary from a clojure spec"
   [spec]
@@ -793,6 +798,9 @@
 
     (t/function? spec)
     (fn->arbitrary spec)
+
+    (set? spec)
+    (set->arbitrary spec)
 
     (satisfies? s/Specize spec)
     (spec-form->arbitrary (s/form spec))
