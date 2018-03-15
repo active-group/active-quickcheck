@@ -414,7 +414,7 @@
   [arb pred]
   (let [gen (arbitrary-generator arb)
         newgen (such-that-generator gen pred)]
-    (make-arbitrary newgen nil))) ;; TODO: write coarbitrary implementation
+    (make-arbitrary newgen :such-that-not-implemented))) ;; TODO: write coarbitrary implementation
 
 (defn generate-one-of
   "Randomly choose one of a list of given arbitraries"
@@ -635,7 +635,7 @@
           (monad/free-bind sizer
                            (fn [len]
                              (choose-sequence (arbitrary-generator arbitrary-el) len))))))
-     nil)))
+     :coll-of-not-implemented)))
 
 (defn arbitrary-sequence-like
   "Arbitrary sequence-like container."
