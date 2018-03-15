@@ -228,7 +228,9 @@
                   (fn [& vals]
                      (let [b (run (apply func vals) size rgen1)]
                        b))))
-              size rgen2)))
+              size rgen2)
+            :else (assert false
+                          (str "invalid generator: " (pr-str m1)))))
                 
         (get-random-generator? m) rgen
                 
@@ -254,7 +256,9 @@
           (fn [& vals]
              (let [b (run (apply func vals) size rgen)]
                b)))
-        ))]
+        
+      :else (assert false
+                    (str "invalid gen: " (pr-str m)))))]
       (run gen size nrgen))))
 
 ; (int -> (generator a)) -> (generator a)
