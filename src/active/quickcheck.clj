@@ -412,6 +412,11 @@
         newgen (such-that-generator gen pred)]
     (make-arbitrary newgen nil))) ;; TODO: write coarbitrary implementation
 
+(defn generate-one-of
+  "Randomly choose one of a list of given arbitraries"
+  [arbs]
+  (monad/free-bind (choose-one-of arbs)
+                   arbitrary-generator))
 
 ;; Arbitraries
 ;; -----------
@@ -736,6 +741,11 @@
   [a & kwargs]
   (apply arbitrary-coll-of (into [(spec->arbitrary a)] kwargs)))
 
+(defn or->arbitrary
+  [& args]
+  (let [arbs (map spec->arbitrary args)]
+    (generate-one-of arbs)))
+
 (defn symbol->arbitrary
   [sym]
   (cond
@@ -753,9 +763,11 @@
 (defn spec-op->arbitrary
   "Make an arbitrary from a spec op"
   [op args]
+  (println (pr-str op))
   (cond
     (= op `s/and) (apply and->arbitrary args)
-    (= op `s/coll-of) (apply coll-of->arbitrary args)))
+    (= op `s/coll-of) (apply coll-of->arbitrary args)
+    (= op `s/or) (apply or->arbitrary args)))
 
 (defn spec-form->arbitrary
   "Make an arbitrary from a s/formed spec"

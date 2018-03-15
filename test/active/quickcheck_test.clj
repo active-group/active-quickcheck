@@ -126,6 +126,14 @@
       (property [x (spec (s/and integer? even? #(> % 10)))]
                 (and (integer? x) (even? x) (> x 10)))))))
 
+(deftest clojure-spec-or
+  (s/def ::uno integer?)
+  (s/def ::due string?)
+  (is
+   (quickcheck
+    (property [x (spec (s/or ::uno ::due))]
+              (or (integer? x) (string? x))))))
+
 (deftest natural
   (testing "arbitrary-natural generates only natural numbers"
     (is
