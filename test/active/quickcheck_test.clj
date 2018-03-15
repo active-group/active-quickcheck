@@ -79,6 +79,14 @@
     (property [x (spec ::deffed)]
               (string? x)))))
 
+(deftest clojure-spec-map-of
+  (is
+   (quickcheck
+    (property [x (spec (s/map-of integer? string?))]
+              (and (map? x)
+                   (every? integer? (keys x))
+                   (every? string? (vals x)))))))
+
 (deftest clojure-spec-coll-of
   (testing "coll-of integer?"
     (is

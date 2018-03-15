@@ -745,6 +745,11 @@
   [a & kwargs]
   (apply arbitrary-coll-of (into [(spec->arbitrary a)] kwargs)))
 
+(defn map-of->arbitrary
+  [ks vs]
+  (arbitrary-map (spec->arbitrary ks)
+                 (spec->arbitrary vs)))
+
 (defn or->arbitrary
   [& args]
   (let [arbs (map spec->arbitrary args)]
@@ -769,8 +774,9 @@
   [op args]
   (cond
     (= op `s/and) (apply and->arbitrary args)
+    (= op `s/or) (apply or->arbitrary args)
     (= op `s/coll-of) (apply coll-of->arbitrary args)
-    (= op `s/or) (apply or->arbitrary args)))
+    (= op `s/map-of) (apply map-of->arbitrary args)))
 
 (defn spec-form->arbitrary
   "Make an arbitrary from a s/formed spec"
