@@ -1,3 +1,5 @@
+# Spec Integration
+
 A big advantage of Clojure's official QuickCheck implementation [`test.check`](https://github.com/clojure/test.check) is its integration with [`Clojure spec`](https://clojure.org/guides/spec). With spec you can specify the structure of your data in any detail you want. Spec allows you to generate sample data that conforms to such a specification and which you can use in your property-based tests. We currently try to make `active-quickcheck` work with Clojure spec.
 
 You can enter the spec world with `spec`. You need to provide something that is a valid spec such as in the following example.
