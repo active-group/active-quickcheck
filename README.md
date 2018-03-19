@@ -47,6 +47,7 @@ Latest stable release: 0.3.0
 ## Documentation
 
 - [Introduction](https://github.com/active-group/active-quickcheck/blob/master/doc/intro.md)
+- [Integration with Clojure spec](https://github.com/active-group/active-quickcheck/blob/master/doc/spec.md)
 
 ## License
 
