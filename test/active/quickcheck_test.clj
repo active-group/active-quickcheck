@@ -60,67 +60,62 @@
     (is
       (quickcheck
         (property [x (spec integer?)]
-                  (integer? x)))))
+                  (s/valid? integer? x)))))
   (testing "clojure spec string"
     (is
       (quickcheck
         (property [x (spec string?)]
-                  (string? x)))))
+                  (s/valid? string? x)))))
   (testing "clojure spec keyword"
     (is
      (quickcheck
       (property [x (spec keyword?)]
-                (keyword? x))))))
+                (s/valid? keyword? x))))))
 
 (deftest clojure-spec-def
   (s/def ::deffed string?)
   (is
    (quickcheck
     (property [x (spec ::deffed)]
-              (string? x)))))
+              (s/valid? ::deffed x)))))
 
 (deftest clojure-spec-map-of
   (is
    (quickcheck
     (property [x (spec (s/map-of integer? string?))]
-              (and (map? x)
-                   (every? integer? (keys x))
-                   (every? string? (vals x)))))))
+              (s/valid? (s/map-of integer? string?) x)))))
 
 (deftest clojure-spec-coll-of
   (testing "coll-of integer?"
     (is
      (quickcheck
       (property [x (spec (s/coll-of integer?))]
-                (and (coll? x)
-                     (if (first x)
-                       (integer? (first x))
-                       true))))))
+                (s/valid? (s/coll-of integer?) x)))))
   (testing "coll-of integer? :kind vector?"
     (is
      (quickcheck
       (property [x (spec (s/coll-of integer? :kind vector?))]
-                (vector? x)))))
+                (s/valid? (s/coll-of integer? :kind vector?) x)))))
   (testing "coll-of integer? :kind list?"
     (is
      (quickcheck
       (property [x (spec (s/coll-of integer? :kind list?))]
-                (list? x)))))
+                (s/valid? (s/coll-of integer? :kind list?) x)))))
   (testing "coll-of integer? :kind set?"
     (is
      (quickcheck
       (property [x (spec (s/coll-of integer? :kind set?))]
-                (set? x)))))
+                (s/valid? (s/coll-of integer? :kind set?) x)))))
   (testing "coll-of integer? :count 23"
     (is
      (quickcheck
       (property [x (spec (s/coll-of integer? :count 23))]
-                (= (count x) 23)))))
+                (s/valid? (s/coll-of integer? :count 23) x)))))
   (testing "coll-of integer? :min-count 23 :max-count 25"
     (is
      (quickcheck
       (property [x (spec (s/coll-of integer? :min-count 23 :max-count 25))]
-                (> 26 (count x) 22))))))
+                (s/valid? (s/coll-of integer? :min-count 23 :max-count 25) x))))))
 
 (deftest clojure-spec-and-such-that
   (testing "and integer? even?"
