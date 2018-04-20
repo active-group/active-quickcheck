@@ -372,6 +372,13 @@
   [generator arbitrary-generator
    transformer arbitrary-transformer])
 
+(define-record-type Coarbitrary-type
+  ^{:doc "Coarbitrary typeclass in original Haskell implementation"}
+  (make-coarbitrary 
+   coarbitrary) ;; a (generator b) -> (generator b)
+  coarbitrary?
+  [coarbitrary coarbitrary-coarbitrary])
+
 (defn coarbitrary
   [arb val gen]
   "Modify a generator depending on val parameter."
@@ -383,6 +390,12 @@
     (choose-one-of '(true false))
     (fn [a gen]
       (variant (if a 0 1) gen))))
+
+(def coarbitrary-boolean
+  "Coarbitrary boolean"
+  (make-coarbitrary
+   (fn [a gen]
+     (variant (if a 0 1) gen))))
 
 
 ;; Combinators
@@ -431,6 +444,11 @@
     (sized
       (fn [n]
         (choose-integer (- n) n)))
+    :not-suported))
+
+(def coarbitrary-integer
+  "Arbitrary integer."
+  (make-coarbitrary
     (fn [n gen]
       (variant (if (>= n 0)
                  (* 2 n)
@@ -443,8 +461,12 @@
     (sized
       (fn [n]
         (choose-integer 0 n)))
-    (fn [n gen]
-      (variant n gen))))
+    :not-supported))
+
+(def coarbitrary-natural
+  "Coarbitrary natural number"
+  (fn [n gen]
+      (variant n gen)))
 
 (defn arbitrary-integer-from-to
   "Arbitrary integer from range."
@@ -453,35 +475,64 @@
     (sized
       (fn [n]
         (choose-integer from to)))
-    (fn [n gen]
-      (variant (- n from) gen))))
+    :not-supported))
+
+(defn coarbitrary-integer-from-to
+  "Coarbitrary integer from range."
+  [from to]
+  (fn [n gen]
+      (variant (- n from) gen)))
 
 (defn- arbitrary-int-like
   [gen to-int]
   (make-arbitrary 
     gen
-    (fn [v rgen]
-      (variant (to-int v) rgen))))
+    :not-supported))
+
+(defn- coarbitrary-int-like
+  [gen to-int]
+  (make-coarbitrary (fn [v rgen]
+                      (variant (to-int v) rgen))))
 
 (def arbitrary-byte
   "Arbitrary byte."
   (arbitrary-int-like choose-byte byte))
 
+(def coarbitrary-byte
+  "Coarbitrary byte."
+  (coarbitrary-int-like choose-byte byte))
+
 (def arbitrary-short
   "Arbitrary short."
   (arbitrary-int-like choose-short short))
+
+(def coarbitrary-short
+  "Coarbitrary short."
+  (coarbitrary-int-like choose-short short))
 
 (def arbitrary-int
   "Arbitrary int."
   (arbitrary-int-like choose-int int))
 
+(def coarbitrary-int
+  "Coarbitrary int."
+  (coarbitrary-int-like choose-int int))
+
 (def arbitrary-long
   "Arbitrary long."
   (arbitrary-int-like choose-long long))
 
+(def coarbitrary-long
+  "Coarbitrary long."
+  (coarbitrary-int-like choose-long long))
+
 (def arbitrary-unsigned-byte
   "Arbitrary unsigned byte."
   (arbitrary-int-like choose-unsigned-byte short))
+
+(def coarbitrary-unsigned-byte
+  "Coarbitrary unsigned byte."
+  (coarbitrary-int-like choose-unsigned-byte short))
 
 (def arbitrary-unsigned-short
   "Arbitrary unsigned short."
@@ -491,28 +542,55 @@
   "Arbitrary unsigned int."
   (arbitrary-int-like choose-unsigned-int long))
 
+(def coarbitrary-unsigned-int
+  "Coarbitrary unsigned int."
+  (coarbitrary-int-like choose-unsigned-int long))
+
 (def arbitrary-unsigned-long
   "Arbitrary unsigned long."
   (arbitrary-int-like choose-unsigned-long bigint))
+
+(def coarbitrary-unsigned-long
+  "Coarbitrary unsigned long."
+  (coarbitrary-int-like choose-unsigned-long bigint))
 
 (def arbitrary-ascii-char
   "Arbitrary ASCII character."
   (arbitrary-int-like choose-ascii-char int))
 
+(def coarbitrary-ascii-char
+  "Coarbitrary ASCII character."
+  (coarbitrary-int-like choose-ascii-char int))
+
 (def arbitrary-ascii-letter
   "Arbitrary ASCII letter."
   (arbitrary-int-like choose-ascii-letter int))
+
+(def coarbitrary-ascii-letter
+  "Coarbitrary ASCII letter."
+  (coarbitrary-int-like choose-ascii-letter int))
 
 (def arbitrary-printable-ascii-char
   "Arbitrary printable ASCII character."
   (arbitrary-int-like choose-printable-ascii-char int))
 
+(def coarbitrary-printable-ascii-char
+  "Coarbitrary printable ASCII character."
+  (coarbitrary-int-like choose-printable-ascii-char int))
+
 (def arbitrary-char
   "Arbitrary char."
   (arbitrary-int-like (sized
-                        (fn [n]
-                          (choose-char \u0000 (char (min n 0xffff)))))
-    int))
+                       (fn [n]
+                         (choose-char \u0000 (char (min n 0xffff)))))
+                      int))
+
+(def coarbitrary-char
+  "Coarbitrary char."
+  (coarbitrary-int-like (sized
+                         (fn [n]
+                           (choose-char \u0000 (char (min n 0xffff)))))
+                        int))
 
 (defn- make-rational
   [a b]
@@ -531,6 +609,15 @@
         (coarbitrary arbitrary-integer
           (.denominator r) gen)))))
 
+(def coarbitrary-rational
+  "Coarbitrary rational number."
+  (make-coarbitrary
+   (fn [^clojure.lang.Ratio r gen]
+     ((coarbitrary-coarbitrary coarbitrary-integer)
+      (.numerator r)
+      ((coarbitrary-coarbitrary coarbitrary-integer)
+       (.denominator r) gen)))))
+
 (defn- fraction
   [a b c]
   (+ a
@@ -544,12 +631,17 @@
       (arbitrary-generator arbitrary-integer)
       (arbitrary-generator arbitrary-integer)
       (arbitrary-generator arbitrary-integer))
-    (fn [r gen]
-      (let [^clojure.lang.Ratio fr (rationalize r)]
-        (coarbitrary arbitrary-integer
-          (.numerator fr)
-          (coarbitrary arbitrary-integer
-            (.denominator fr) gen))))))
+    :not-supported))
+
+(def coarbitrary-float
+  "Coarbitrary float."
+  (make-coarbitrary
+   (fn [r gen]
+     (let [^clojure.lang.Ratio fr (rationalize r)]
+       ((coarbitrary-coarbitrary coarbitrary-integer)
+        (.numerator fr)
+        ((coarbitrary-coarbitrary coarbitrary-integer)
+         (.denominator fr) gen))))))
 
 (declare coerce->generator)
 
@@ -559,6 +651,12 @@
   (make-arbitrary
     (choose-mixed (map #(delay (coerce->generator (force (second %))))
                     pred+arbitrary-promise-list))
+    :not-supported))
+
+(defn coarbitrary-mixed
+  "Arbitrary value from one of a list of (promises of) arbitraries."
+  [pred+arbitrary-promise-list]
+  (make-coarbitrary
     (fn [val gen]
       (loop [lis pred+arbitrary-promise-list
              n 0]
@@ -572,6 +670,12 @@
   [eql? & vals]
   (make-arbitrary
     (choose-one-of vals)
+    :not-supported))
+
+(defn coarbitrary-one-of
+  "Coarbitrary value from a list of values, and equality predicate."
+  [eql? & vals]
+  (make-coarbitrary
     (fn [val gen]
       (loop [lis vals
              n 0]
@@ -597,6 +701,19 @@
                   gen))]
         (recurse arbitrary-els lis)))))
 
+(defn coarbitrary-tuple
+  [& coarbitrary-els]
+  (make-coarbitrary
+   (fn [lis gen]
+     (letfn [(recurse [coarbitrary-els lis]
+               (if (seq coarbitrary-els)
+                 ((coarbitrary-coarbitrary (first coarbitrary-els))
+                  (first lis)
+                  (recurse (rest coarbitrary-els)
+                           (rest lis)))
+                 gen))]
+       (recurse coarbitrary-els lis)))))
+
 (defn arbitrary-record
   "Arbitrary record."
   [construct accessors & arbitrary-els]
@@ -604,14 +721,20 @@
     (apply lift->generator
       construct
       (map arbitrary-generator arbitrary-els))
+    :not-supported))
+
+(defn coarbitrary-record
+  "Coarbitrary record."
+  [construct accessors & coarbitrary-els]
+  (make-coarbitrary
     (fn [rec gen]
-      (letfn [(recurse [arbitrary-els lis]
-                (if (seq arbitrary-els)
-                  ((arbitrary-transformer (first arbitrary-els))
+      (letfn [(recurse [coarbitrary-els lis]
+                (if (seq coarbitrary-els)
+                  ((coarbitrary-coarbitrary (first coarbitrary-els))
                     (first lis)
-                    (recurse (rest arbitrary-els) (rest lis)))
+                    (recurse (rest coarbitrary-els) (rest lis)))
                   gen))]
-        (recurse arbitrary-els
+        (recurse coarbitrary-els
           (map #(% rec) accessors))))))
 
 (defn arbitrary-coll-of
@@ -637,6 +760,11 @@
                              (choose-sequence (arbitrary-generator arbitrary-el) len))))))
      :coll-of-not-implemented)))
 
+(defn coarbitrary-coll-of
+  "Coarbitrary collection mimicking Clojure spec's coll-of"
+  [arbitrary-el & kwargs]
+  :not-supported-yet)
+
 (defn arbitrary-sequence-like
   "Arbitrary sequence-like container."
   [choose-sequence sequence->list arbitrary-el]
@@ -655,33 +783,74 @@
                   (variant 0 gen)))]
         (recurse (sequence->list sequ))))))
 
+(defn coarbitrary-sequence-like
+  "Coarbitr sequence-like container."
+  [choose-sequence sequence->list coarbitrary-el]
+  (make-coarbitrary
+    (fn [sequ gen]
+      (letfn [(recurse [lis]
+                (if (seq lis)
+                  ((coarbitrary-coarbitrary coarbitrary-el)
+                    (first lis)
+                    (variant 1 (recurse (rest lis))))
+                  (variant 0 gen)))]
+        (recurse (sequence->list sequ))))))
+
 (defn arbitrary-list
   "Arbitrary list."
   [arbitrary-el]
   (arbitrary-sequence-like choose-list identity arbitrary-el))
+
+(defn coarbitrary-list
+  "Coarbitrary list."
+  [coarbitrary-el]
+  (coarbitrary-sequence-like choose-list identity coarbitrary-el))
 
 (defn arbitrary-vector
   "Arbitrary vector."
   [arbitrary-el]
   (arbitrary-sequence-like choose-vector #(into () %) arbitrary-el))
 
+(defn coarbitrary-vector
+  "Coarbitrary vector."
+  [coarbitrary-el]
+  (coarbitrary-sequence-like choose-vector #(into () %) coarbitrary-el))
+
 (def arbitrary-byte-array
   "Arbitrary byte-array."
   (arbitrary-sequence-like (fn [_ n] (choose-byte-array n)) #(into () %) arbitrary-byte))
+
+(def coarbitrary-byte-array
+  "coarbitrary byte-array."
+  (coarbitrary-sequence-like (fn [_ n] (choose-byte-array n)) #(into () %) coarbitrary-byte))
 
 (defn arbitrary-map
   "Arbitrary map over the given arbitrary key and value."
   [arbitrary-key arbitrary-value]
   (arbitrary-sequence-like choose-map #(into () %) (arbitrary-tuple arbitrary-key arbitrary-value)))
 
+(defn coarbitrary-map
+  "coarbitrary map over the given arbitrary key and value."
+  [coarbitrary-key coarbitrary-value]
+  (coarbitrary-sequence-like choose-map #(into () %) (coarbitrary-tuple coarbitrary-key coarbitrary-value)))
+
 (defn arbitrary-set
   "Arbitrary set."
   [arbitrary-el]
   (arbitrary-sequence-like choose-set #(into () %) arbitrary-el))
 
+(defn coarbitrary-set
+  "Coarbitrary set."
+  [coarbitrary-el]
+  (coarbitrary-sequence-like choose-set #(into () %) coarbitrary-el))
+
 (def arbitrary-ascii-string
   "Arbitrary string of ASCII characters."
   (arbitrary-sequence-like choose-string #(into () %) arbitrary-ascii-char))
+
+(def coarbitrary-ascii-string
+  "Coarbitrary string of ASCII characters."
+  (coarbitrary-sequence-like choose-string #(into () %) coarbitrary-ascii-char))
 
 (def arbitrary-printable-ascii-string
   "Arbitrary string of printable ASCII characters."
@@ -691,39 +860,66 @@
   "Arbitrary string."
   (arbitrary-sequence-like choose-string #(into () %) arbitrary-char))
 
+(def coarbitrary-string
+  "Coarbitrary string."
+  (coarbitrary-sequence-like choose-string #(into () %) coarbitrary-char))
+
 (defn- arbitrary-symbol-like
   [choose]
   (make-arbitrary
     (sized (fn [n] (choose n)))
+    :not-supported))
+
+(defn- coarbitrary-symbol-like
+  [choose]
+  (make-coarbitrary
     (fn [v gen]
-      (coarbitrary arbitrary-string (name v) gen))))
+      ((coarbitrary-coarbitrary coarbitrary-string) (name v) gen))))
 
 (def arbitrary-symbol
   "Arbitrary symbol."
   (arbitrary-symbol-like choose-symbol))
 
+(def coarbitrary-symbol
+  "Coarbitrary symbol."
+  (coarbitrary-symbol-like choose-symbol))
+
 (def arbitrary-keyword
   "Arbitrary keyword."
   (arbitrary-symbol-like choose-keyword))
 
+(def coarbitrary-keyword
+  "Coarbitrary keyword."
+  (coarbitrary-symbol-like choose-keyword))
+
 (defn arbitrary-function
   "Arbitrary function."
-  [arbitrary-result & arbitrary-args]
-  (let [arbitrary-arg-tuple (apply arbitrary-tuple arbitrary-args)]
+  [arbitrary-result & coarbitrary-args]
+  (let [coarbitrary-arg-tuple (apply coarbitrary-tuple coarbitrary-args)]
     (make-arbitrary
       (promote
         (fn [& args]
-          ((arbitrary-transformer arbitrary-arg-tuple)
+          ((coarbitrary-coarbitrary coarbitrary-arg-tuple)
             args
             (arbitrary-generator arbitrary-result))))
-      (fn [func gen]
-        (monadic
-          [args (arbitrary-generator arbitrary-arg-tuple)
-           t
-           ((arbitrary-transformer arbitrary-result)
-             (apply func args)
-             gen)]
-          (monad/return t))))))
+      :coarbitrary-function-not-supported-yet)))
+
+(defn coarbitrary-function
+  "Coarbitrary function."
+  [coarbitrary-result & arbitrary-args]
+  (let [arbitrary-arg-tuple (apply arbitrary-tuple arbitrary-args)]
+    (make-coarbitrary
+     (fn [func gen]
+       (monadic
+        [args (arbitrary-generator arbitrary-arg-tuple)
+         t
+         ((coarbitrary-coarbitrary coarbitrary-result)
+          (apply func args)
+          gen)]
+        (monad/return t))))))
+
+
+
 
 ;; spec->arbitrary
 ;; ---------------
@@ -836,6 +1032,19 @@ the operator."
       (some #(= '-> %) form) :function
       :else [(first form)])))
 
+(defmulti expand-coarbitrary
+  "Multimethod to expand `coarbitrary' forms.
+
+  Dispatches on the symbol for atomic arbitrary forms,
+  and on [op] for compound coarbitrary forms, where op is
+  the operator."
+  (fn [form]
+    (cond
+      (symbol? form) form
+      (or (not (seq? form)) (not (seq form))) :default
+      (some #(= '-> %) form) :function
+      :else [(first form)])))
+
 (defmethod expand-arbitrary :default [form]
   (throw (Exception. (str "invalid expand-arbitrary form: " form))))
 
@@ -844,73 +1053,146 @@ the operator."
         after (rest with)]
     (if (not= 1 (count after))
       (throw (Exception. (str "more than one codomain for expand-arbitrary function form: " form))))
-    `(arbitrary-function ~(expand-arbitrary (first after)) ~@(map expand-arbitrary before))))
+    `(arbitrary-function ~(expand-arbitrary (first after)) ~@(map expand-coarbitrary before))))
+
+(defmethod expand-coarbitrary :function [form]
+  (let [[before with] (split-with #(not= % '->) form)
+        after (rest with)]
+    (if (not= 1 (count after))
+      (throw (Exception. (str "more than one codomain for expand-coarbitrary function form: " form))))
+    `(coarbitrary-function ~(expand-coarbitrary (first after)) ~@(map expand-arbitrary before))))
 
 (defmethod expand-arbitrary 'boolean [form]
   `arbitrary-boolean)
 
+(defmethod expand-coarbitrary 'boolean [form]
+  `coarbitrary-boolean)
+
 (defmethod expand-arbitrary 'integer [form]
   `arbitrary-integer)
+
+(defmethod expand-coarbitrary 'integer [form]
+  `coarbitrary-integer)
 
 (defmethod expand-arbitrary 'byte [form]
   `arbitrary-byte)
 
+(defmethod expand-coarbitrary 'byte [form]
+  `coarbitrary-byte)
+
 (defmethod expand-arbitrary 'short [form]
   `arbitrary-short)
+
+(defmethod expand-coarbitrary 'short [form]
+  `coarbitrary-short)
 
 (defmethod expand-arbitrary 'int [form]
   `arbitrary-int)
 
+(defmethod expand-coarbitrary 'int [form]
+  `coarbitrary-int)
+
 (defmethod expand-arbitrary 'long [form]
   `arbitrary-long)
+
+(defmethod expand-coarbitrary 'long [form]
+  `coarbitrary-long)
 
 (defmethod expand-arbitrary 'unsigned-byte [form]
   `arbitrary-unsigned-byte)
 
+(defmethod expand-coarbitrary 'unsigned-byte [form]
+  `coarbitrary-unsigned-byte)
+
 (defmethod expand-arbitrary 'unsigned-short [form]
   `arbitrary-unsigned-short)
+
+(defmethod expand-coarbitrary 'unsigned-short [form]
+  `coarbitrary-unsigned-short)
 
 (defmethod expand-arbitrary 'unsigned-int [form]
   `arbitrary-unsigned-int)
 
+(defmethod expand-coarbitrary 'unsigned-int [form]
+  `coarbitrary-unsigned-int)
+
 (defmethod expand-arbitrary 'unsigned-long [form]
   `arbitrary-unsigned-long)
+
+(defmethod expand-coarbitrary 'unsigned-long [form]
+  `coarbitrary-unsigned-long)
 
 (defmethod expand-arbitrary 'natural [form]
   `arbitrary-natural)
 
+(defmethod expand-coarbitrary 'natural [form]
+  `coarbitrary-natural)
+
 (defmethod expand-arbitrary 'rational [form]
   `arbitrary-rational)
+
+(defmethod expand-coarbitrary 'rational [form]
+  `coarbitrary-rational)
 
 (defmethod expand-arbitrary 'float [form]
   `arbitrary-float)
 
+(defmethod expand-coarbitrary 'float [form]
+  `coarbitrary-float)
+
 (defmethod expand-arbitrary 'char [form]
   `arbitrary-char)
+
+(defmethod expand-coarbitrary 'char [form]
+  `coarbitrary-char)
 
 (defmethod expand-arbitrary 'ascii-char [form]
   `arbitrary-ascii-char)
 
+(defmethod expand-coarbitrary 'ascii-char [form]
+  `coarbitrary-ascii-char)
+
 (defmethod expand-arbitrary 'printable-ascii-char [form]
   `arbitrary-printable-ascii-char)
+
+(defmethod expand-coarbitrary 'printable-ascii-char [form]
+  `coarbitrary-printable-ascii-char)
 
 (defmethod expand-arbitrary 'string [form]
   `arbitrary-string)
 
+(defmethod expand-coarbitrary 'string [form]
+  `coarbitrary-string)
+
 (defmethod expand-arbitrary 'ascii-string [form]
   `arbitrary-ascii-string)
+
+(defmethod expand-coarbitrary 'ascii-string [form]
+  `coarbitrary-ascii-string)
 
 (defmethod expand-arbitrary 'printable-ascii-string [form]
   `arbitrary-printable-ascii-string)
 
+(defmethod expand-coarbitrary 'printable-ascii-string [form]
+  `coarbitrary-printable-ascii-string)
+
 (defmethod expand-arbitrary 'byte-array [form]
   `arbitrary-byte-array)
+
+(defmethod expand-coarbitrary 'byte-array [form]
+  `coarbitrary-byte-array)
 
 (defmethod expand-arbitrary 'symbol [form]
   `arbitrary-symbol)
 
+(defmethod expand-coarbitrary 'symbol [form]
+  `coarbitrary-symbol)
+
 (defmethod expand-arbitrary 'keyword [form]
   `arbitrary-keyword)
+
+(defmethod expand-coarbitrary 'keyword [form]
+  `coarbitrary-keyword)
 
 (defn- expand-has-arg-count
   [form n]
@@ -926,37 +1208,73 @@ the operator."
   (expand-has-arg-count form 1)
   (second form))
 
+(defmethod expand-coarbitrary '[clojure.core/unquote] [form]
+  (expand-has-arg-count form 1)
+  (second form))
+
 (defmethod expand-arbitrary '[integer-from-to] [form]
   (expand-has-at-least-arg-count form 2)
   `(arbitrary-integer-from-to ~(second form) ~@(nthrest form 2)))
+
+(defmethod expand-coarbitrary '[integer-from-to] [form]
+  (expand-has-at-least-arg-count form 2)
+  `(coarbitrary-integer-from-to ~(second form) ~@(nthrest form 2)))
 
 (defmethod expand-arbitrary '[one-of] [form]
   (expand-has-at-least-arg-count form 2)
   `(arbitrary-one-of ~(second form) ~@(nthrest form 2)))
 
+(defmethod expand-coarbitrary '[one-of] [form]
+  (expand-has-at-least-arg-count form 2)
+  `(coarbitrary-one-of ~(second form) ~@(nthrest form 2)))
+
 (defmethod expand-arbitrary '[tuple] [form]
   `(arbitrary-tuple ~@(map expand-arbitrary (rest form))))
+
+(defmethod expand-coarbitrary '[tuple] [form]
+  `(coarbitrary-tuple ~@(map expand-coarbitrary (rest form))))
 
 (defmethod expand-arbitrary '[list] [form]
   (expand-has-arg-count form 1)
   `(arbitrary-list ~(expand-arbitrary (nth form 1))))
 
+(defmethod expand-coarbitrary '[list] [form]
+  (expand-has-arg-count form 1)
+  `(coarbitrary-list ~(expand-coarbitrary (nth form 1))))
+
 (defmethod expand-arbitrary '[vector] [form]
   (expand-has-arg-count form 1)
   `(arbitrary-vector ~(expand-arbitrary (nth form 1))))
 
+(defmethod expand-coarbitrary '[vector] [form]
+  (expand-has-arg-count form 1)
+  `(coarbitrary-vector ~(expand-coarbitrary (nth form 1))))
+
 (defmethod expand-arbitrary '[spec] [form]
   (expand-has-arg-count form 1)
   `(spec->arbitrary ~(nth form 1)))
+
+(defmethod expand-coarbitrary '[spec] [form]
+  (expand-has-arg-count form 1)
+  `(spec->coarbitrary ~(nth form 1)))
 
 (defmethod expand-arbitrary '[map] [form]
   (expand-has-arg-count form 2)
   `(arbitrary-map ~(expand-arbitrary (nth form 1))
      ~(expand-arbitrary (nth form 2))))
 
+(defmethod expand-coarbitrary '[map] [form]
+  (expand-has-arg-count form 2)
+  `(coarbitrary-map ~(expand-coarbitrary (nth form 1))
+     ~(expand-coarbitrary (nth form 2))))
+
 (defmethod expand-arbitrary '[set] [form]
   (expand-has-arg-count form 1)
   `(arbitrary-set ~(expand-arbitrary (nth form 1))))
+
+(defmethod expand-coarbitrary '[set] [form]
+  (expand-has-arg-count form 1)
+  `(coarbitrary-set ~(expand-coarbitrary (nth form 1))))
 
 ; (record cons (acc ...) arb ...)
 (defmethod expand-arbitrary '[record] [form]
@@ -968,6 +1286,15 @@ the operator."
       `(arbitrary-record ~(nth form 1) (list ~@(map first pairs))
          ~@(map expand-arbitrary (map second pairs))))))
 
+(defmethod expand-coarbitrary '[record] [form]
+  (expand-has-arg-count form 2)
+  (let [ops (nth form 2)]
+    (when (odd? (count ops))
+      (throw (Exception. "Even number of field operands to record.")))
+    (let [pairs (partition 2 ops)]
+      `(coarbitrary-record ~(nth form 1) (list ~@(map first pairs))
+         ~@(map expand-coarbitrary (map second pairs))))))
+
 ; (mixed pred arb ...)
 (defmethod expand-arbitrary '[mixed] [form]
   (expand-has-at-least-arg-count form 2)
@@ -976,6 +1303,18 @@ the operator."
   `(arbitrary-mixed (list ~@(map (fn [[pred arb]]
                                    `(list ~pred (delay ~(expand-arbitrary arb))))
                               (partition 2 (rest form))))))
+
+(defmethod expand-coarbitrary '[mixed] [form]
+  (expand-has-at-least-arg-count form 2)
+  (when (even? (count form))
+    (throw (Exception. "Odd number of operands to mixed.")))
+  `(coarbitrary-mixed (list ~@(map (fn [[pred arb]]
+                                     `(list ~pred (delay ~(expand-coarbitrary arb))))
+                                   (partition 2 (rest form))))))
+
+(defmacro coarbitrary
+  [form]
+  (expand-coarbitrary form))
 
 (defmacro arbitrary
   "Convenient syntax for constructing arbitraries.

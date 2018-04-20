@@ -581,3 +581,13 @@
        (property [proc ((record ->Foo [:bar integer :baz string])
                         -> integer)]
                  (integer? (proc (Foo. 47 "foo"))))))))
+
+(defrecord Bar [bla blu])
+
+(deftest record3
+  (testing "arbitrary-record works"
+    (is
+      (quickcheck 
+       (property [proc ((record ->Bar [:bla integer :blu integer])
+                        -> integer)]
+                 (integer? (proc (Bar. 23 42))))))))
