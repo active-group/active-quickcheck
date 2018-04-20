@@ -376,17 +376,6 @@
   coarbitrary?
   [coarbitrary coarbitrary-coarbitrary])
 
-(def arbitrary-boolean
-  "Arbitrary boolean."
-  (make-arbitrary
-    (choose-one-of '(true false))))
-
-(def coarbitrary-boolean
-  "Coarbitrary boolean"
-  (make-coarbitrary
-   (fn [a gen]
-     (variant (if a 0 1) gen))))
-
 
 ;; Combinators
 ;; -----------
@@ -427,6 +416,17 @@
 
 ;; Arbitraries
 ;; -----------
+
+(def arbitrary-boolean
+  "Arbitrary boolean."
+  (make-arbitrary
+    (choose-one-of '(true false))))
+
+(def coarbitrary-boolean
+  "Coarbitrary boolean"
+  (make-coarbitrary
+   (fn [a gen]
+     (variant (if a 0 1) gen))))
 
 (def arbitrary-integer
   "Arbitrary integer."
