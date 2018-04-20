@@ -365,12 +365,9 @@
 
 (define-record-type Arbitrary-type
   ^{:doc "Generalization of generator, suitable for producing function generators."}
-  (make-arbitrary 
-    generator ;; (generator a)
-    transformer) ;; a (generator b) -> (generator b)
+  (make-arbitrary generator)
   arbitrary?
-  [generator arbitrary-generator
-   transformer arbitrary-transformer])
+  [generator arbitrary-generator])
 
 (define-record-type Coarbitrary-type
   ^{:doc "Coarbitrary typeclass in original Haskell implementation"}
@@ -379,17 +376,10 @@
   coarbitrary?
   [coarbitrary coarbitrary-coarbitrary])
 
-(defn coarbitrary
-  [arb val gen]
-  "Modify a generator depending on val parameter."
-  ((arbitrary-transformer arb) val gen))
-
 (def arbitrary-boolean
   "Arbitrary boolean."
   (make-arbitrary
-    (choose-one-of '(true false))
-    (fn [a gen]
-      (variant (if a 0 1) gen))))
+    (choose-one-of '(true false))))
 
 (def coarbitrary-boolean
   "Coarbitrary boolean"
@@ -427,7 +417,7 @@
   [arb pred]
   (let [gen (arbitrary-generator arb)
         newgen (such-that-generator gen pred)]
-    (make-arbitrary newgen :such-that-not-implemented))) ;; TODO: write coarbitrary implementation
+    (make-arbitrary newgen))) ;; TODO: write coarbitrary implementation
 
 (defn generate-one-of
   "Randomly choose one of a list of given arbitraries"
@@ -441,10 +431,9 @@
 (def arbitrary-integer
   "Arbitrary integer."
   (make-arbitrary
-    (sized
-      (fn [n]
-        (choose-integer (- n) n)))
-    :not-suported))
+   (sized
+    (fn [n]
+      (choose-integer (- n) n)))))
 
 (def coarbitrary-integer
   "Arbitrary integer."
@@ -458,10 +447,9 @@
 (def arbitrary-natural
   "Arbitrary natural number."
   (make-arbitrary
-    (sized
-      (fn [n]
-        (choose-integer 0 n)))
-    :not-supported))
+   (sized
+    (fn [n]
+      (choose-integer 0 n)))))
 
 (def coarbitrary-natural
   "Coarbitrary natural number"
@@ -472,10 +460,9 @@
   "Arbitrary integer from range."
   [from to]
   (make-arbitrary
-    (sized
-      (fn [n]
-        (choose-integer from to)))
-    :not-supported))
+   (sized
+    (fn [n]
+      (choose-integer from to)))))
 
 (defn coarbitrary-integer-from-to
   "Coarbitrary integer from range."
@@ -486,8 +473,7 @@
 (defn- arbitrary-int-like
   [gen to-int]
   (make-arbitrary 
-    gen
-    :not-supported))
+   gen))
 
 (defn- coarbitrary-int-like
   [gen to-int]
@@ -602,12 +588,7 @@
   (make-arbitrary
     (lift->generator make-rational
       (arbitrary-generator arbitrary-integer)
-      (arbitrary-generator arbitrary-natural))
-    (fn [^clojure.lang.Ratio r gen]
-      (coarbitrary arbitrary-integer
-        (.numerator r)
-        (coarbitrary arbitrary-integer
-          (.denominator r) gen)))))
+      (arbitrary-generator arbitrary-natural))))
 
 (def coarbitrary-rational
   "Coarbitrary rational number."
@@ -627,11 +608,10 @@
 (def arbitrary-float
   "Arbitrary float."
   (make-arbitrary
-    (lift->generator fraction
-      (arbitrary-generator arbitrary-integer)
-      (arbitrary-generator arbitrary-integer)
-      (arbitrary-generator arbitrary-integer))
-    :not-supported))
+   (lift->generator fraction
+                    (arbitrary-generator arbitrary-integer)
+                    (arbitrary-generator arbitrary-integer)
+                    (arbitrary-generator arbitrary-integer))))
 
 (def coarbitrary-float
   "Coarbitrary float."
@@ -649,9 +629,8 @@
   "Arbitrary value from one of a list of (promises of) arbitraries."
   [pred+arbitrary-promise-list]
   (make-arbitrary
-    (choose-mixed (map #(delay (coerce->generator (force (second %))))
-                    pred+arbitrary-promise-list))
-    :not-supported))
+   (choose-mixed (map #(delay (coerce->generator (force (second %))))
+                      pred+arbitrary-promise-list))))
 
 (defn coarbitrary-mixed
   "Arbitrary value from one of a list of (promises of) arbitraries."
@@ -669,8 +648,7 @@
   "Arbitrary value from a list of values, and equality predicate."
   [eql? & vals]
   (make-arbitrary
-    (choose-one-of vals)
-    :not-supported))
+   (choose-one-of vals)))
 
 (defn coarbitrary-one-of
   "Coarbitrary value from a list of values, and equality predicate."
@@ -690,16 +668,7 @@
   (make-arbitrary
     (apply lift->generator
       vector
-      (map arbitrary-generator arbitrary-els))
-    (fn [lis gen]
-      (letfn [(recurse [arbitrary-els lis]
-                (if (seq arbitrary-els)
-                  ((arbitrary-transformer (first arbitrary-els))
-                    (first lis)
-                    (recurse (rest arbitrary-els)
-                      (rest lis)))
-                  gen))]
-        (recurse arbitrary-els lis)))))
+      (map arbitrary-generator arbitrary-els))))
 
 (defn coarbitrary-tuple
   [& coarbitrary-els]
@@ -718,10 +687,9 @@
   "Arbitrary record."
   [construct accessors & arbitrary-els]
   (make-arbitrary
-    (apply lift->generator
-      construct
-      (map arbitrary-generator arbitrary-els))
-    :not-supported))
+   (apply lift->generator
+          construct
+          (map arbitrary-generator arbitrary-els))))
 
 (defn coarbitrary-record
   "Coarbitrary record."
@@ -757,8 +725,7 @@
                       (choose-integer min-count (if max-count max-count n)))]
           (monad/free-bind sizer
                            (fn [len]
-                             (choose-sequence (arbitrary-generator arbitrary-el) len))))))
-     :coll-of-not-implemented)))
+                             (choose-sequence (arbitrary-generator arbitrary-el) len)))))))))
 
 (defn coarbitrary-coll-of
   "Coarbitrary collection mimicking Clojure spec's coll-of"
@@ -773,15 +740,7 @@
       (fn [n]
         (monad/free-bind (choose-integer 0 n)
           (fn [length]
-            (choose-sequence (arbitrary-generator arbitrary-el) length)))))
-    (fn [sequ gen]
-      (letfn [(recurse [lis]
-                (if (seq lis)
-                  ((arbitrary-transformer arbitrary-el)
-                    (first lis)
-                    (variant 1 (recurse (rest lis))))
-                  (variant 0 gen)))]
-        (recurse (sequence->list sequ))))))
+            (choose-sequence (arbitrary-generator arbitrary-el) length)))))))
 
 (defn coarbitrary-sequence-like
   "Coarbitr sequence-like container."
@@ -867,8 +826,7 @@
 (defn- arbitrary-symbol-like
   [choose]
   (make-arbitrary
-    (sized (fn [n] (choose n)))
-    :not-supported))
+   (sized (fn [n] (choose n)))))
 
 (defn- coarbitrary-symbol-like
   [choose]
@@ -897,12 +855,11 @@
   [arbitrary-result & coarbitrary-args]
   (let [coarbitrary-arg-tuple (apply coarbitrary-tuple coarbitrary-args)]
     (make-arbitrary
-      (promote
-        (fn [& args]
-          ((coarbitrary-coarbitrary coarbitrary-arg-tuple)
-            args
-            (arbitrary-generator arbitrary-result))))
-      :coarbitrary-function-not-supported-yet)))
+     (promote
+      (fn [& args]
+        ((coarbitrary-coarbitrary coarbitrary-arg-tuple)
+         args
+         (arbitrary-generator arbitrary-result)))))))
 
 (defn coarbitrary-function
   "Coarbitrary function."
