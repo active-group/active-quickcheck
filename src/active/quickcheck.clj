@@ -41,6 +41,10 @@
   [])
 (def get-size (make-get-size))
 
+
+;; Basic generator combinators
+;; ---------------------------
+
 ; [lower, upper]
 (defn choose-integer
   "Generator for integers within a range, bounds are inclusive."
@@ -376,9 +380,18 @@
   coarbitrary?
   [coarbitrary coarbitrary-coarbitrary])
 
+(define-record-type Property-type
+  ^{:doc "QuickCheck property"}
+  (make-property func arg-names args)
+  property?
+  [func property-func
+   arg-names property-arg-names
+   ;; (seq (union arbitrary generator))
+   args property-args])
 
-;; Combinators
-;; -----------
+
+;; Advanced generator combinators
+;; ------------------------------
 
 (defn such-that-maybe
   [gen pred]
@@ -413,6 +426,7 @@
   [arbs]
   (monad/free-bind (choose-one-of arbs)
                    arbitrary-generator))
+
 
 ;; Arbitraries
 ;; -----------
@@ -876,12 +890,9 @@
         (monad/return t))))))
 
 
-
-
 ;; spec->arbitrary
 ;; ---------------
 
-(declare such-that)
 (declare spec->arbitrary)
 
 (defn and->arbitrary
@@ -967,14 +978,11 @@
     :else
     (assert false "Unknown spec shape")))
 
-(define-record-type Property-type
-  ^{:doc "QuickCheck property"}
-  (make-property func arg-names args)
-  property?
-  [func property-func
-   arg-names property-arg-names
-   ;; (seq (union arbitrary generator))
-   args property-args])
+
+
+
+;; Arbitrary and Coarbitrary multimethods
+;; --------------------------------------
 
 (defmulti expand-arbitrary
   "Multimethod to expand `arbitrary' forms.
@@ -992,7 +1000,7 @@ the operator."
 (defmulti expand-coarbitrary
   "Multimethod to expand `coarbitrary' forms.
 
-  Dispatches on the symbol for atomic arbitrary forms,
+  Dispatches on the symbol for atomic coarbitrary forms,
   and on [op] for compound coarbitrary forms, where op is
   the operator."
   (fn [form]
@@ -1268,6 +1276,9 @@ the operator."
   `(coarbitrary-mixed (list ~@(map (fn [[pred arb]]
                                      `(list ~pred (delay ~(expand-coarbitrary arb))))
                                    (partition 2 (rest form))))))
+
+
+;; ------
 
 (defmacro coarbitrary
   [form]
