@@ -529,6 +529,14 @@
                 (and (function? proc)
                      (integer? (proc 42))))))))
 
+(deftest and-spec-function
+  (testing "creating a function and-spec -> int works"
+    (is
+     (quickcheck
+      (property [proc ((spec (s/and integer? even? #(> % 10))) -> integer)]
+                (and (function? proc)
+                     (integer? (proc 42))))))))
+
 (deftest ==>q
   (testing "==> works"
     (is

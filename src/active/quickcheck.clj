@@ -915,6 +915,12 @@
         pred (fn [val] (every? identity (map #((myresolve %) val) args)))]
     (such-that arb-a pred)))
 
+(defn and->coarbitrary
+  "Make a coarbitrary from a spec product"
+  [a & args]
+  (let [coarb-a (spec->coarbitrary a)]
+    coarb-a))
+
 (defn coll-of->arbitrary
   [a & kwargs]
   (apply arbitrary-coll-of (into [(spec->arbitrary a)] kwargs)))
@@ -983,6 +989,7 @@
   "Make a coarbitrary from a spec op"
   [op args]
   (cond
+    (= op `s/and) (apply and->coarbitrary args)
     (= op `s/or) (apply or->coarbitrary args)
     (= op `s/coll-of) (apply coll-of->coarbitrary args)
     (= op `s/map-of) (apply map-of->coarbitrary args)))
