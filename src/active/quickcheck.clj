@@ -280,6 +280,15 @@
   (lift->generator #(nth lis %)
     (choose-integer 0 (- (count lis) 1))))
 
+; (list (gen a)) -> (gen a)
+(defn oneof
+  "Haskell QuickCheck's oneof"
+  [gs]
+  (when (< (count gs) 1)
+    (assert false "oneof used with empty list"))
+  (monad/free-bind (choose-integer 0 (- (count gs) 1))
+                   #(nth gs 1)))
+
 ; vector from the paper
 ; (generator a) int -> (generator (list a))
 (defn choose-list
@@ -894,6 +903,7 @@
 ;; ---------------
 
 (declare spec->arbitrary)
+(declare spec->coarbitrary)
 
 (defn and->arbitrary
   [a & args]
@@ -909,15 +919,28 @@
   [a & kwargs]
   (apply arbitrary-coll-of (into [(spec->arbitrary a)] kwargs)))
 
+(defn coll-of->coarbitrary
+  [a & kwargs]
+  (apply coarbitrary-coll-of (into [(spec->coarbitrary a)] kwargs)))
+
 (defn map-of->arbitrary
   [ks vs]
   (arbitrary-map (spec->arbitrary ks)
                  (spec->arbitrary vs)))
 
+(defn map-of->coarbitrary
+  [ks vs]
+  (coarbitrary-map (spec->coarbitrary ks)
+                   (spec->coarbitrary vs)))
+
 (defn or->arbitrary
   [& args]
   (let [arbs (map spec->arbitrary args)]
     (generate-one-of arbs)))
+
+(defn or->coarbitrary
+  [& args]
+  :not-supported-yet)
 
 (defn symbol->arbitrary
   [sym]
@@ -926,12 +949,26 @@
     (= sym `string?) arbitrary-string
     (= sym `keyword?) arbitrary-keyword))
 
+(defn symbol->coarbitrary
+  [sym]
+  (cond
+    (= sym `integer?) coarbitrary-integer
+    (= sym `string?) coarbitrary-string
+    (= sym `keyword?) coarbitrary-keyword))
+
 (defn fn->arbitrary
   [fun]
   (cond
     (= fun integer?) arbitrary-integer
     (= fun string?) arbitrary-string
     (= fun keyword?) arbitrary-keyword))
+
+(defn fn->coarbitrary
+  [fun]
+  (cond
+    (= fun integer?) coarbitrary-integer
+    (= fun string?) coarbitrary-string
+    (= fun keyword?) coarbitrary-keyword))
 
 (defn spec-op->arbitrary
   "Make an arbitrary from a spec op"
@@ -942,6 +979,14 @@
     (= op `s/coll-of) (apply coll-of->arbitrary args)
     (= op `s/map-of) (apply map-of->arbitrary args)))
 
+(defn spec-op->coarbitrary
+  "Make a coarbitrary from a spec op"
+  [op args]
+  (cond
+    (= op `s/or) (apply or->coarbitrary args)
+    (= op `s/coll-of) (apply coll-of->coarbitrary args)
+    (= op `s/map-of) (apply map-of->coarbitrary args)))
+
 (defn spec-form->arbitrary
   "Make an arbitrary from a s/formed spec"
   [form]
@@ -951,10 +996,25 @@
           args (rest form)]
       (spec-op->arbitrary op args))))
 
+(defn spec-form->coarbitrary
+  "Make a coarbitrary from a s/formed spec"
+  [form]
+  (println (pr-str form))
+  (if (symbol? form)
+    (symbol->coarbitrary form)
+    (let [op (first form)
+          args (rest form)]
+      (spec-op->coarbitrary op args))))
+
 (defn set->arbitrary
   "Make an arbitrary from a set (behaviour like enum)"
   [s]
   (apply arbitrary-one-of (into [identity] s)))
+
+(defn set->coarbitrary
+  "Make a coarbitrary from a set (behaviour like enum)"
+  [s]
+  (apply coarbitrary-one-of (into [identity] s)))
 
 (defn spec->arbitrary
   "Make an arbitrary from a clojure spec"
@@ -974,6 +1034,28 @@
 
     (satisfies? s/Specize spec)
     (spec-form->arbitrary (s/form spec))
+
+    :else
+    (assert false "Unknown spec shape")))
+
+(defn spec->coarbitrary
+  "Make a coarbitrary from a clojure spec"
+  [spec]
+  (cond
+    (keyword? spec)
+    (spec-form->coarbitrary (s/form spec))
+
+    (symbol? spec)
+    (symbol->coarbitrary spec)
+
+    (t/function? spec)
+    (fn->coarbitrary spec)
+
+    (set? spec)
+    (set->coarbitrary spec)
+
+    (satisfies? s/Specize spec)
+    (spec-form->coarbitrary (s/form spec))
 
     :else
     (assert false "Unknown spec shape")))

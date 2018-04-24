@@ -521,6 +521,14 @@
                  (and (function? proc)
                       (integer? (proc #(= % \A)))))))))
 
+(deftest simple-spec-function
+  (testing "creating a function spec -> int works"
+    (is
+     (quickcheck
+      (property [proc ((spec integer?) -> integer)]
+                (and (function? proc)
+                     (integer? (proc 42))))))))
+
 (deftest ==>q
   (testing "==> works"
     (is
