@@ -1,7 +1,7 @@
 (defproject active-quickcheck "0.4.0-SNAPSHOT"
   :description "QuickCheck clone for Clojure"
   :url "http://github.com/active-group/active-quickcheck"
-  :dependencies [[org.clojure/clojure "1.9.0-beta4"]
+  :dependencies [[org.clojure/clojure "1.9.0"]
                  [org.clojure/math.numeric-tower "0.0.2"]
                  [org.clojure/test.check "0.9.0"]
                  [active-clojure "0.22.0"]]
