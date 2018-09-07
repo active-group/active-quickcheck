@@ -1,5 +1,6 @@
 (ns active.quickcheck-test
-  (:require [clojure.test :refer :all]
+  (:require [active.clojure.record-spec :refer [define-record-type]]
+            [clojure.test :refer :all]
             [clojure.spec.alpha :as s])
   (:use active.quickcheck))
 
@@ -607,3 +608,16 @@
        (property [proc ((record ->Bar [:bla integer :blu integer])
                         -> integer)]
                  (integer? (proc (Bar. 23 42))))))))
+
+(define-record-type foo
+  (make-foo bar bla)
+  foo?
+  [^{:spec string?} bar foo-bar
+   ^{:spec string?} bla foo-bla])
+
+(deftest active-clojure-record-spec
+  (is
+   (quickcheck
+    (property
+     [f (spec ::foo)]
+     (string? (foo-bar f))))))

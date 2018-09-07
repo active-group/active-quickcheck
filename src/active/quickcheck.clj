@@ -17,6 +17,7 @@
   (:require [active.clojure.condition :as c])
   (:require [clojure.spec.alpha :as s])
   (:require [clojure.test :as t])
+  (:require [clojure.test.check.generators :as gen])
   (:use clojure.math.numeric-tower)
   (:use [clojure.test :only [assert-expr do-report]]))
 
@@ -1023,10 +1024,21 @@
   [s]
   (apply coarbitrary-one-of (into [identity] s)))
 
+(defn gen->arbitrary
+  "Make a spec gen specification into an arbitrary."
+  [gen]
+  (monad/return (first (gen/sample gen))))
+
 (defn spec->arbitrary
   "Make an arbitrary from a clojure spec"
   [spec]
   (cond
+    (s/spec? (s/get-spec spec))
+    (try
+      (gen->arbitrary (s/gen spec))
+      (catch Exception e
+        (spec-form->arbitrary (s/form spec))))
+
     (keyword? spec)
     (spec-form->arbitrary (s/form spec))
 
