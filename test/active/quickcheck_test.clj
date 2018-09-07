@@ -152,6 +152,16 @@
                   (= x :b)
                   (= x :c))))))
 
+(s/def ::leaf string?)
+(s/def ::other (s/coll-of ::inner))
+(s/def ::inner (s/or ::leaf ::other))
+
+(deftest clojure-spec-recursive
+  (is
+    (quickcheck
+      (property [x (spec ::inner)]
+                (s/valid? ::inner x)))))
+
 (deftest natural
   (testing "arbitrary-natural generates only natural numbers"
     (is
