@@ -116,7 +116,13 @@
     (is
      (quickcheck
       (property [x (spec (s/coll-of integer? :min-count 23 :max-count 25))]
-                (s/valid? (s/coll-of integer? :min-count 23 :max-count 25) x))))))
+                (s/valid? (s/coll-of integer? :min-count 23 :max-count 25) x)))))
+  (testing "coll-of ::deffed"
+    (s/def ::deffed string?)
+    (is
+     (quickcheck
+      (property [x (spec (s/coll-of ::deffed))]
+                (s/valid? (s/coll-of ::deffed) x))))))
 
 (deftest clojure-spec-and-such-that
   (testing "and integer? even?"
