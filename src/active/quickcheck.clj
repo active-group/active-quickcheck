@@ -1027,7 +1027,8 @@
 (defn gen->arbitrary
   "Make a spec gen specification into an arbitrary."
   [gen]
-  (monad/return (first (gen/sample gen))))
+  (make-arbitrary
+   (monad/return (first (gen/sample gen)))))
 
 (defn spec->arbitrary
   "Make an arbitrary from a clojure spec"
