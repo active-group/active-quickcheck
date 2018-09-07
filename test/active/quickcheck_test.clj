@@ -1,5 +1,6 @@
 (ns active.quickcheck-test
-  (:require [clojure.test :refer :all]
+  (:require [active.clojure.record-spec :refer [define-record-type]]
+            [clojure.test :refer :all]
             [clojure.spec.alpha :as s])
   (:use active.quickcheck))
 
@@ -521,6 +522,22 @@
                  (and (function? proc)
                       (integer? (proc #(= % \A)))))))))
 
+(deftest simple-spec-function
+  (testing "creating a function spec -> int works"
+    (is
+     (quickcheck
+      (property [proc ((spec integer?) -> integer)]
+                (and (function? proc)
+                     (integer? (proc 42))))))))
+
+(deftest and-spec-function
+  (testing "creating a function and-spec -> int works"
+    (is
+     (quickcheck
+      (property [proc ((spec (s/and integer? even? #(> % 10))) -> integer)]
+                (and (function? proc)
+                     (integer? (proc 42))))))))
+
 (deftest ==>q
   (testing "==> works"
     (is
@@ -581,3 +598,26 @@
        (property [proc ((record ->Foo [:bar integer :baz string])
                         -> integer)]
                  (integer? (proc (Foo. 47 "foo"))))))))
+
+(defrecord Bar [bla blu])
+
+(deftest record3
+  (testing "arbitrary-record works"
+    (is
+      (quickcheck 
+       (property [proc ((record ->Bar [:bla integer :blu integer])
+                        -> integer)]
+                 (integer? (proc (Bar. 23 42))))))))
+
+(define-record-type foo
+  (make-foo bar bla)
+  foo?
+  [^{:spec string?} bar foo-bar
+   ^{:spec string?} bla foo-bla])
+
+(deftest active-clojure-record-spec
+  (is
+   (quickcheck
+    (property
+     [f (spec ::foo)]
+     (string? (foo-bar f))))))
