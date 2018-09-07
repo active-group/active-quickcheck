@@ -942,7 +942,10 @@
 
 (defn or->arbitrary
   [& args]
-  (let [arbs (map spec->arbitrary args)]
+  (let [parts (partition 2 args)
+        _kws (map first parts) ;; Odd that we don't need them
+        specs (map second parts)
+        arbs (map spec->arbitrary specs)]
     (generate-one-of arbs)))
 
 (defn or->coarbitrary

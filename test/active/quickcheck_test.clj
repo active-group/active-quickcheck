@@ -140,9 +140,10 @@
   (s/def ::uno integer?)
   (s/def ::due string?)
   (is
-   (quickcheck
-    (property [x (spec (s/or ::uno ::due))]
-              (or (integer? x) (string? x))))))
+    (quickcheck
+      (property [x (spec (s/or :eins ::uno
+                               :zwei ::due))]
+                (or (integer? x) (string? x))))))
 
 (deftest clojure-spec-set
   (is
@@ -152,11 +153,11 @@
                   (= x :b)
                   (= x :c))))))
 
-(s/def ::leaf string?)
-(s/def ::other (s/coll-of ::inner))
-(s/def ::inner (s/or ::leaf ::other))
 
 (deftest clojure-spec-recursive
+  (s/def ::leaf string?)
+  (s/def ::other (s/coll-of ::inner))
+  (s/def ::inner (s/or :leaf ::leaf :other ::other))
   (is
     (quickcheck
       (property [x (spec ::inner)]
