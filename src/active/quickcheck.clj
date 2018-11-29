@@ -12,8 +12,8 @@
       :doc "A QuickCheck clone for Clojure."}
   active.quickcheck
   (:use active.random)
-  (:require [active.clojure.record :refer :all])
-  (:require [active.clojure.monad :refer :all :as monad])
+  (:require [active.clojure.record :refer [define-record-type]])
+  (:require [active.clojure.monad :as monad])
   (:require [active.clojure.condition :as c])
   (:require [clojure.spec.alpha :as s])
   (:require [clojure.test :as t])
@@ -24,7 +24,7 @@
 (defn lift->generator
   "Lift a function on values to generators."
   [func & gens]
-  (monadic
+  (monad/monadic
     [vals (monad/sequ gens)]
     (monad/return (apply func vals))))
            
@@ -50,7 +50,7 @@
 (defn choose-integer
   "Generator for integers within a range, bounds are inclusive."
   [lower upper]
-  (monadic
+  (monad/monadic
     [rgen get-random-generator]
     (let [[n _] (random-integer rgen lower upper)])
     (monad/return n)))
@@ -106,7 +106,7 @@
 (defn choose-float
   "Generator for floats within a range, bounds are inclusive."
   [lower upper]
-  (monadic
+  (monad/monadic
     [rgen get-random-generator]
     (let [[n _] (random-float rgen lower upper)])
     (monad/return n)))
@@ -126,7 +126,7 @@
 
 (defn- choose-char-with-property
   [pred]
-  (monadic
+  (monad/monadic
     [rgen get-random-generator]
 ;   ;; loop until proper char is found; otherwise we could build a
 ;   ;; map of all chars, but that's not that good either.
@@ -158,7 +158,7 @@
 (defn choose-char
   "Generator for chars within a range, bonds are inclusive."
   [lower upper]
-  (monadic
+  (monad/monadic
     [rgen get-random-generator]
     (let [[n _] (random-integer rgen
                                    (int lower) (int upper))])
@@ -196,16 +196,16 @@
   (let [[size nrgen] (random-integer rgen 0 n)]
     (letfn [(run [m size rgen]
       (cond
-        (free-return? m) (free-return-val m)
+        (monad/free-return? m) (monad/free-return-val m)
                 
-        (free-bind? m)
-        (let [m1 (free-bind-monad m)
-              cont (free-bind-cont m)
+        (monad/free-bind? m)
+        (let [m1 (monad/free-bind-monad m)
+              cont (monad/free-bind-cont m)
               [rgen1 rgen2] (random-generator-split rgen)]
           (cond
-            (free-return? m1) (recur (cont (free-return-val m1)) size rgen)
+            (monad/free-return? m1) (recur (cont (monad/free-return-val m1)) size rgen)
             
-            (free-bind? m1) (c/assertion-violation `run "nested bind; should not happen" m m1)
+            (monad/free-bind? m1) (c/assertion-violation `run "nested bind; should not happen" m m1)
             
             (get-random-generator? m1) (recur (cont rgen2) size rgen1)
             
@@ -270,7 +270,7 @@
 (defn sized
   "Apply a size to a generator."
   [func]
-  (monadic
+  (monad/monadic
     [size get-size]
     (func size)))
 
@@ -298,7 +298,7 @@
   (letfn [(recurse [n]
             (if (zero? n)
               (monad/return '())
-              (monadic
+              (monad/monadic
                 [val el-gen
                  rest (recurse (- n 1))]
                 (monad/return (conj rest val)))))]
@@ -314,7 +314,7 @@
 (defn choose-symbol
   "Generator for a symbol with size n+1."
   [n]
-  (monadic
+  (monad/monadic
     [fst (choose-string choose-non-numeric-char 1)
      rst (choose-string (choose-mixed (list choose-alphanumeric-char
                                         (choose-one-of (seq "*+!-_?"))))
@@ -324,7 +324,7 @@
 (defn choose-keyword
   "Generator for a keyword with size n+1."
   [n]
-  (monadic
+  (monad/monadic
     [s (choose-symbol n)]
     (monad/return (keyword s))))
 
@@ -364,7 +364,7 @@
 (defn choose-with-frequencies
   "Generator that chooses from a sequence of (frequency generator) pairs."
   [lis]
-  (monadic
+  (monad/monadic
     [n (choose-integer 1 (apply + (map first lis)))]
     (monad/return (pick n lis))))
 
@@ -407,8 +407,8 @@
   [gen pred]
   (letfn [(mytry [k n]
                (if (= 0 n)
-                 (monadic (monad/return nil))
-                 (monadic [x (resize (+ (* 2 k) n) gen)]
+                 (monad/monadic (monad/return nil))
+                 (monad/monadic [x (resize (+ (* 2 k) n) gen)]
                           (if (pred x)
                             (monad/return x)
                             (mytry (+ k 1) (- n 1))))))]
@@ -416,7 +416,7 @@
 
 (defn such-that-generator
   [gen pred]
-  (monadic
+  (monad/monadic
    [x (such-that-maybe gen pred)]
    (if x
      (monad/return x)
@@ -891,7 +891,7 @@
   (let [arbitrary-arg-tuple (apply arbitrary-tuple arbitrary-args)]
     (make-coarbitrary
      (fn [func gen]
-       (monadic
+       (monad/monadic
         [args (arbitrary-generator arbitrary-arg-tuple)
          t
          ((coarbitrary-coarbitrary coarbitrary-result)
@@ -1486,7 +1486,7 @@ saying whether the property is satisfied."
 (defn for-all
   "Bind names to generated values."
   [func & args]
-    (monadic
+    (monad/monadic
       [args (monad/sequ (map coerce->generator args))
        res (coerce->result-generator (apply func args))]
       (monad/return (result-add-arguments res
@@ -1495,7 +1495,7 @@ saying whether the property is satisfied."
 (defn for-all-with-names
   "Bind names to generated values, supplying informative names."
   [func arg-names args]
-  (monadic
+  (monad/monadic
     [args (monad/sequ (map coerce->generator args))
      res (coerce->result-generator (apply func args))]
     (monad/return (result-add-arguments res (map list arg-names args)))))
@@ -1510,7 +1510,7 @@ saying whether the property is satisfied."
 (defn label
   "Label a testable value."
   [str testable]
-  (monadic
+  (monad/monadic
     [res (coerce->result-generator testable)]
     (monad/return (result-add-stamp res str))))
 
