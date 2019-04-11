@@ -1118,6 +1118,9 @@ the operator."
 (defmethod expand-arbitrary :default [form]
   (throw (Exception. (str "invalid expand-arbitrary form: " form))))
 
+(defmethod expand-coarbitrary :default [form]
+  (throw (Exception. (str "invalid expand-coarbitrary form: " form))))
+
 (defmethod expand-arbitrary :function [form]
   (let [[before with] (split-with #(not= % '->) form)
         after (rest with)]
