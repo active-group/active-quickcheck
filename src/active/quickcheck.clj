@@ -1729,3 +1729,36 @@ returns three values:
                      :message (str "falsifiable")
                      :expected prop-sexpr#
                      :actual (check-result-arguments-list success#)})))))
+
+
+;; --- Distribution tools ---------
+
+(let [incc (fn [i]
+             (if i (inc i) 1))]
+
+  (defn occurrences [stamps]
+    (reduce (fn [acc labels]
+              (reduce (fn [acc label]
+                        (update acc label incc)) acc labels))
+            {} stamps)))
+
+(let [map-values (fn [f m]
+                   (into {} (for [[k v] m] [k (f v)])))]
+
+  (defn distribution [stamps]
+    (let [n (count stamps)]
+      (map-values (fn [x] (/ x n))
+                  (occurrences stamps)))))
+
+(defn fraction-of [label stamps]
+  (let [d (distribution stamps)]
+    (or (get d label) 0)))
+
+(defn distributed?
+  "Check stamp distribution"
+  [stamps & pairs]
+  (let [required-distribution (apply hash-map pairs)
+        actual-distribution (distribution stamps)]
+    (every? (fn [[label lower-bound]]
+              (>= (get actual-distribution label) lower-bound))
+            required-distribution)))

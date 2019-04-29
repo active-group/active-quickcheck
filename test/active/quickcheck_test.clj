@@ -638,3 +638,64 @@
     (property
      [f (spec ::foo)]
      (string? (foo-bar f))))))
+
+
+;; --- Distribution tools ---------
+
+(deftest occurrences-t
+  (is (= (occurrences [["even" "huge"] ["odd" "huge"] []])
+         {"even" 1
+          "odd" 1
+          "huge" 2})))
+
+(deftest distribution-t
+  (is (= (distribution [["even" "huge"] ["odd" "huge"] []])
+         {"even" 1/3
+          "odd" 1/3
+          "huge" 2/3})))
+
+(deftest fraction-of-t
+  (let [stamps [[] [] []]]
+    (is (= 0 (fraction-of "no exist" stamps))))
+
+  (let [stamps [["even" "huge"] ["odd" "huge"] []]]
+    (is (= 0 (fraction-of "no exist" stamps)))
+    (is (= 1/3 (fraction-of "even" stamps)))
+    (is (= 1/3 (fraction-of "odd" stamps)))
+    (is (= 2/3 (fraction-of "huge" stamps)))))
+
+(deftest distributed-t
+  (testing "distribution checker works"
+    (testing "base case"
+      (let [stamps-1 [["even" "huge"] ["even"] ["odd" "huge"] ["odd"]]]
+        (is (distributed? stamps-1
+                          "even" 0.48
+                          "odd" 0.48
+                          "huge" 0.48))))
+
+    (testing "negative case"
+      (let [stamps-1 [["even" "huge"] ["even"] ["odd" "huge"] ["odd"]]]
+        (is (not
+             (distributed? stamps-1
+                           "even" 0.52
+                           "odd" 0.48
+                           "huge" 0.48)))))
+
+    (testing "empty requirements"
+      (let [stamps-1 [["even"] ["even"] ["odd"] ["odd"]]]
+        (is (distributed? stamps-1))))
+
+    (testing "empty requirements and stamps"
+      (let [stamps-1 []]
+        (is (distributed? stamps-1))))
+
+    (testing "empty requirements and labels"
+      (let [stamps-1 [[] [] [] []]]
+        (is (distributed? stamps-1))))
+
+    (testing "multiple"
+      (let [stamps-1 [["a" "b"] ["a" "b"] ["a" "b"] ["a" "b"]]]
+        (is (distributed? stamps-1
+                          "a" 1
+                          "b" 1
+                          ))))))
