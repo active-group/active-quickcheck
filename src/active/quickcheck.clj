@@ -1762,3 +1762,34 @@ returns three values:
     (every? (fn [[label lower-bound]]
               (>= (get actual-distribution label) lower-bound))
             required-distribution)))
+
+(defmethod assert-expr 'with-distribution [msg form]
+  ;; (is (with-distribution [label fraction ...] (quickcheck prop)))
+  ;; Asserts that the property passes the QuickCheck tests
+  ;; and meets the required label distribution
+  (let [pairs (drop-last (drop 1 form))
+        qcform (last form)]
+    (let [prop (second qcform)]
+      `(let [prop-sexpr# '~prop
+             prop# ~prop
+             [ntests# stamps# success#] (quickcheck-results prop#)
+             d?# (distributed? stamps# ~@pairs)]
+
+         (case success#
+           true
+           (if d?#
+             (do-report {:type :pass, :message ~msg,
+                         :expected prop-sexpr#})
+             (do-report {:type :fail, :message "Distribution requirements not met",
+                         :expected (hash-map ~@pairs)
+                         :actual (distribution stamps#)}))
+
+           false
+           (do-report {:type :fail, 
+                             :message (str "Arguments exhausted after " ntests# " tries"),
+                             :expected prop-sexpr#, :actual false})
+
+           (do-report {:type :fail,
+                       :message (str "falsifiable")
+                       :expected prop-sexpr#
+                       :actual (check-result-arguments-list success#)}))))))

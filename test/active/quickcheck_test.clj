@@ -699,3 +699,18 @@
                           "a" 1
                           "b" 1
                           ))))))
+
+(deftest with-distribution-t
+  (testing "some odd some even"
+    (is
+
+     (with-distribution
+       "even" 0.4
+       "odd" 0.4
+
+       (quickcheck
+        (property [x integer]
+                  (label (cond
+                           (even? x) "even"
+                           (odd? x) "odd")
+                         (integer? x))))))))
