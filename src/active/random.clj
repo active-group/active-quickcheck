@@ -95,3 +95,35 @@
   (if (< i b)
       1
       (+ 1 (ilogbase b (quot i b)))))
+
+(defn log [n]
+  (long
+   (Math/floor
+    (/ (Math/log n)
+       (Math/log 2)))))
+
+;; bit wasteful using an entire long per bit aber ey
+(defn binary-encoding [x]
+  (let [s (Integer/toBinaryString x)]
+    (map (fn [b]
+           (case b
+             \0 (long 0)
+             \1 (long 1))) s)))
+
+(defn gamma-encoding [x]
+  (let [n (log x)
+        zeroes (repeat n (long 0))
+        binary (binary-encoding x)]
+    (concat zeroes binary)))
+
+(defn integer-variant [x rgen]
+  ;; 0 is illegal
+  (let [x (inc x)]
+    (reduce (fn [rgen ^long bit]
+              (let [[l r] (random-generator-split rgen)]
+                (case bit
+                  0 l
+                  1 r)))
+            rgen (gamma-encoding x))))
+
+(instance? Long (read-string "0" ))

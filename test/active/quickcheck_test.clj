@@ -1,7 +1,8 @@
 (ns active.quickcheck-test
   (:require [active.clojure.record-spec :refer [define-record-type]]
             [clojure.test :refer :all]
-            [clojure.spec.alpha :as s])
+            [clojure.spec.alpha :as s]
+            [active.random :as random])
   (:use active.quickcheck))
 
 (defn check-quick
@@ -714,3 +715,33 @@
                            (even? x) "even"
                            (odd? x) "odd")
                          (integer? x))))))))
+
+
+;; --- Performance ---------
+
+;; `variant` used to be O(n), should now be O(log n)
+
+(deftest log-t
+  (is (= 0 (random/log 1)))
+  (is (= 1 (random/log 2)))
+  (is (= 1 (random/log 3)))
+  (is (= 3 (random/log 15))))
+
+(deftest binary-encoding
+  (is (= [0] (random/binary-encoding 0)))
+  (is (= [1] (random/binary-encoding 1)))
+  (is (= [1 0] (random/binary-encoding 2)))
+  (is (= [1 0 1 1] (random/binary-encoding 11))))
+
+(deftest gamma-encoding
+  (is (= [1] (random/gamma-encoding 1)))
+  (is (= [0 1 0] (random/gamma-encoding 2)))
+  (is (= [0 0 0 1 0 1 1] (random/gamma-encoding 11))))
+
+(deftest variant-performance-t
+  (is
+   (quickcheck
+    (property [proc (integer -> integer)]
+              (and (function? proc)
+                   (integer? (proc 0))
+                   (integer? (proc 999999999)))))))
