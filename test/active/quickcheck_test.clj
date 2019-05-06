@@ -670,35 +670,35 @@
     (testing "base case"
       (let [stamps-1 [["even" "huge"] ["even"] ["odd" "huge"] ["odd"]]]
         (is (distributed? stamps-1
-                          "even" 0.48
-                          "odd" 0.48
-                          "huge" 0.48))))
+                          {"even" 0.48
+                           "odd" 0.48
+                           "huge" 0.48}))))
 
     (testing "negative case"
       (let [stamps-1 [["even" "huge"] ["even"] ["odd" "huge"] ["odd"]]]
         (is (not
              (distributed? stamps-1
-                           "even" 0.52
-                           "odd" 0.48
-                           "huge" 0.48)))))
+                           {"even" 0.52
+                            "odd" 0.48
+                            "huge" 0.48})))))
 
     (testing "empty requirements"
       (let [stamps-1 [["even"] ["even"] ["odd"] ["odd"]]]
-        (is (distributed? stamps-1))))
+        (is (distributed? stamps-1 {}))))
 
     (testing "empty requirements and stamps"
       (let [stamps-1 []]
-        (is (distributed? stamps-1))))
+        (is (distributed? stamps-1 {}))))
 
     (testing "empty requirements and labels"
       (let [stamps-1 [[] [] [] []]]
-        (is (distributed? stamps-1))))
+        (is (distributed? stamps-1 {}))))
 
     (testing "multiple"
       (let [stamps-1 [["a" "b"] ["a" "b"] ["a" "b"] ["a" "b"]]]
         (is (distributed? stamps-1
-                          "a" 1
-                          "b" 1
+                          {"a" 1
+                           "b" 1}
                           ))))))
 
 (deftest with-distribution-t

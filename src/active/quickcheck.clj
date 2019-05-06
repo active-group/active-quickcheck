@@ -1707,23 +1707,24 @@ returns three values:
         (= c 0) (stamp<? (rest s1) (rest s2))
         :else false))))
 
+(defn ^:no-doc quickcheck-report [msg prop-sexpr result]
+  (let [[ntests stamps success] result]
+    (case success
+      true (do-report {:type :pass, :message msg,
+                       :expected prop-sexpr})
+      false (do-report {:type :fail, 
+                        :message (str "Arguments exhausted after " ntests " tries"),
+                        :expected prop-sexpr, :actual false})
+      (do-report {:type :fail,
+                  :message (str "falsifiable")
+                  :expected prop-sexpr
+                  :actual (check-result-arguments-list success)}))))
+
 (defmethod assert-expr 'quickchecked [msg form]
   ;; (is (quickchecked prop))
   ;; Asserts that the property passes the QuickCheck tests
   (let [prop (second form)]
-    `(let [prop-sexpr# '~prop
-           prop# ~prop
-           [ntests# stamps# success#] (quickcheck-results prop#)]
-       (case success#
-         true (do-report {:type :pass, :message ~msg,
-                          :expected prop-sexpr#})
-         false (do-report {:type :fail, 
-                           :message (str "Arguments exhausted after " ntests# " tries"),
-                           :expected prop-sexpr#, :actual false})
-         (do-report {:type :fail,
-                     :message (str "falsifiable")
-                     :expected prop-sexpr#
-                     :actual (check-result-arguments-list success#)})))))
+    `(quickcheck-report ~msg '~prop (quickcheck-results ~prop))))
 
 (defmethod assert-expr 'quickcheck [msg form]
   ;; deprecated alias of quickchecked.
@@ -1734,7 +1735,7 @@ returns three values:
 (let [incc (fn [i]
              (if i (inc i) 1))]
 
-  (defn occurrences [stamps]
+  (defn ^:no-doc occurrences [stamps]
     (reduce (fn [acc labels]
               (reduce (fn [acc label]
                         (update acc label incc)) acc labels))
@@ -1743,23 +1744,31 @@ returns three values:
 (let [map-values (fn [f m]
                    (into {} (for [[k v] m] [k (f v)])))]
 
-  (defn distribution [stamps]
+  (defn ^:no-doc distribution [stamps]
     (let [n (count stamps)]
       (map-values (fn [x] (/ x n))
                   (occurrences stamps)))))
 
-(defn fraction-of [label stamps]
+(defn ^:no-doc fraction-of [label stamps]
   (let [d (distribution stamps)]
     (or (get d label) 0)))
 
-(defn distributed?
+(defn ^:no-doc distributed?
   "Check stamp distribution"
-  [stamps & pairs]
-  (let [required-distribution (apply hash-map pairs)
-        actual-distribution (distribution stamps)]
+  [stamps required-distribution]
+  (let [actual-distribution (distribution stamps)]
     (every? (fn [[label lower-bound]]
               (>= (get actual-distribution label) lower-bound))
             required-distribution)))
+
+(defn ^:no-doc with-distribution-report [msg prop-sexpr pairs result]
+  (let [[ntests stamps success] result
+        d? (distributed? stamps pairs)]
+    (if (and success (not d?))
+      (do-report {:type :fail, :message "Distribution requirements not met",
+                  :expected pairs
+                  :actual (distribution stamps)})
+      (quickcheck-report msg prop-sexpr result))))
 
 (defmethod assert-expr 'with-distribution [msg form]
   ;; (is (with-distribution [label fraction ...] (quickcheck prop)))
@@ -1768,26 +1777,4 @@ returns three values:
   (let [pairs (drop-last (drop 1 form))
         qcform (last form)]
     (let [prop (second qcform)]
-      `(let [prop-sexpr# '~prop
-             prop# ~prop
-             [ntests# stamps# success#] (quickcheck-results prop#)
-             d?# (distributed? stamps# ~@pairs)]
-
-         (case success#
-           true
-           (if d?#
-             (do-report {:type :pass, :message ~msg,
-                         :expected prop-sexpr#})
-             (do-report {:type :fail, :message "Distribution requirements not met",
-                         :expected (hash-map ~@pairs)
-                         :actual (distribution stamps#)}))
-
-           false
-           (do-report {:type :fail, 
-                             :message (str "Arguments exhausted after " ntests# " tries"),
-                             :expected prop-sexpr#, :actual false})
-
-           (do-report {:type :fail,
-                       :message (str "falsifiable")
-                       :expected prop-sexpr#
-                       :actual (check-result-arguments-list success#)}))))))
+      `(with-distribution-report ~msg '~prop (hash-map ~@pairs) (quickcheck-results ~prop)))))
