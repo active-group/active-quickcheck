@@ -19,6 +19,8 @@ from John Hughes's original paper.
 
 Latest stable release: 0.5.0
 
+[![Clojars Project](https://img.shields.io/clojars/v/active-quickcheck.svg)](https://clojars.org/active-quickcheck)
+
 [Leiningen](https://github.com/technomancy/leiningen) dependency information:
 
     [active-quickcheck "0.5.0"]
@@ -51,6 +53,6 @@ Latest stable release: 0.5.0
 
 ## License
 
-Copyright © 2013 Active Group GmbH
+Copyright © 2013-2019 Active Group GmbH
 
 Distributed under the Eclipse Public License, the same as Clojure.
