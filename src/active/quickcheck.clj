@@ -1707,8 +1707,8 @@ returns three values:
         (= c 0) (stamp<? (rest s1) (rest s2))
         :else false))))
 
-(defmethod assert-expr 'quickcheck [msg form]
-  ;; (is (quickcheck prop))
+(defmethod assert-expr 'quickchecked [msg form]
+  ;; (is (quickchecked prop))
   ;; Asserts that the property passes the QuickCheck tests
   (let [prop (second form)]
     `(let [prop-sexpr# '~prop
@@ -1725,6 +1725,9 @@ returns three values:
                      :expected prop-sexpr#
                      :actual (check-result-arguments-list success#)})))))
 
+(defmethod assert-expr 'quickcheck [msg form]
+  ;; deprecated alias of quickchecked.
+  (assert-expr msg (apply list 'quickchecked (rest form))))
 
 ;; --- Distribution tools ---------
 
