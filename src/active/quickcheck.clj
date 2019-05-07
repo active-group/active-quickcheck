@@ -218,13 +218,8 @@
             
             (variant? m1)
             (let [v (variant-v m1)
-                  rgen rgen]
-              (loop [v (+ 1 v)
-                     rgen rgen]
-                (if (zero? v)
-                  (run (cont (run (variant-generator m1) size rgen)) size rgen)
-                  (let [[_ rgen2] (random-generator-split rgen)]
-                    (recur (- v 1) rgen2)))))
+                  next-rgen (integer-variant v rgen)]
+              (run (cont (run (variant-generator m1) size next-rgen)) size next-rgen))
             
             (promote? m1)
             (recur

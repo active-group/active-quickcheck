@@ -727,16 +727,17 @@
   (is (= 1 (random/log 3)))
   (is (= 3 (random/log 15))))
 
-(deftest binary-encoding
-  (is (= [0] (random/binary-encoding 0)))
-  (is (= [1] (random/binary-encoding 1)))
-  (is (= [1 0] (random/binary-encoding 2)))
-  (is (= [1 0 1 1] (random/binary-encoding 11))))
+(deftest binary-string
+  (is (= "0" (random/binary-string 0)))
+  (is (= "1" (random/binary-string 1)))
+  (is (= "10" (random/binary-string 2)))
+  (is (= "10000000000000000000000000000000"
+         (random/binary-string (inc Integer/MAX_VALUE)))))
 
 (deftest gamma-encoding
-  (is (= [1] (random/gamma-encoding 1)))
-  (is (= [0 1 0] (random/gamma-encoding 2)))
-  (is (= [0 0 0 1 0 1 1] (random/gamma-encoding 11))))
+  (is (= [\1] (random/gamma-encoding 1)))
+  (is (= [\0 \1 \0] (random/gamma-encoding 2)))
+  (is (= [\0 \0 \0 \1 \0 \1 \1] (random/gamma-encoding 11))))
 
 (deftest variant-performance-t
   (is
@@ -745,3 +746,17 @@
               (and (function? proc)
                    (integer? (proc 0))
                    (integer? (proc 999999999)))))))
+
+(deftest variant-performance-bind-t
+  (is
+   (quickcheck
+    (property [proc ((integer -> integer) -> integer)]
+              (and (function? proc)
+                   (integer? (proc inc))))))
+
+  (is
+   (quickcheck
+    (property [proc (integer -> (integer -> integer))]
+              (and (function? proc)
+                   (function? (proc 999999999))
+                   (integer? ((proc 999999999) 999999999)))))))
