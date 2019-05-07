@@ -543,6 +543,10 @@
   "Arbitrary unsigned short."
   (arbitrary-int-like choose-unsigned-short int))
 
+(def coarbitrary-unsigned-short
+  "Coarbitrary unsigned short."
+  (coarbitrary-int-like choose-unsigned-short int))
+
 (def arbitrary-unsigned-int
   "Arbitrary unsigned int."
   (arbitrary-int-like choose-unsigned-int long))
