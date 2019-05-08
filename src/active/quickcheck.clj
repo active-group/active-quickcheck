@@ -447,7 +447,9 @@
   (make-arbitrary
    (sized
     (fn [n]
-      (choose-integer (- n) n)))))
+      (let [hi (expt 4 n)
+            lo (- hi)]
+        (choose-integer lo hi))))))
 
 (def coarbitrary-integer
   "Arbitrary integer."

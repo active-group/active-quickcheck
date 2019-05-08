@@ -2,7 +2,8 @@
   (:require [active.clojure.record-spec :refer [define-record-type]]
             [clojure.test :refer :all]
             [clojure.spec.alpha :as s]
-            [active.random :as random])
+            [active.random :as random]
+            [clojure.math.numeric-tower :as num])
   (:use active.quickcheck))
 
 (defn check-quick
@@ -163,6 +164,14 @@
     (quickcheck
       (property [x (spec ::inner)]
                 (s/valid? ::inner x)))))
+
+(deftest huge-integer
+  (testing "trivial property"
+    (is
+     (not= true
+           (check-quick
+            (property [x integer]
+                      (< x (num/expt 2 40))))))))
 
 (deftest natural
   (testing "arbitrary-natural generates only natural numbers"
