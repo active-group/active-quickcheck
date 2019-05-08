@@ -1586,6 +1586,55 @@ saying whether the property is satisfied."
   [prop]
   (check quick prop))
 
+(def ntries 20)
+
+(defn counter-example-of-size [gen size rgen]
+  (loop [i ntries
+         rgen rgen]
+    (when-not (zero? i)
+      (let [result (generate size rgen gen)
+            next-rgen (first (random-generator-split rgen))]
+        (case (check-result-ok result)
+          true (recur (dec i) next-rgen)
+          false result
+          )))))
+
+(clojure.test/deftest counter-example-of-size-t
+  (let [prop (property [x (list integer)]
+                       (every? even? x))
+        gen (coerce->result-generator prop)
+        rgen (make-random-generator 0)
+        cex (counter-example-of-size gen 1 rgen)
+        ls (-> cex
+               (check-result-arguments-list)
+               (first) (first) (second))]
+    (clojure.test/is (= 1 (count ls)))))
+
+(defn smallest-counter-example [gen size example rgen]
+  (loop [size (dec size)
+         smallest-example example
+         rgen (second (random-generator-split rgen))]
+
+    (if (zero? size)
+      smallest-example
+      (let [new-example (counter-example-of-size gen size rgen)]
+        (if new-example
+          ;; go smaller
+          (recur (dec size) new-example (second (random-generator-split rgen)))
+          ;; done
+          smallest-example
+          )))))
+
+(clojure.test/deftest smallest-counter-example-t
+  (let [prop (property [x (list integer)]
+                       (every? even? x))
+        gen (coerce->result-generator prop)
+        rgen (make-random-generator 0)
+        cex (smallest-counter-example gen 50 :failed rgen)
+        ls (-> cex
+               (check-result-arguments-list)
+               (first) (first) (second))]
+    (clojure.test/is (= 1 (count ls)))))
 
 (defn- tests
   "Run a series of test runs.
@@ -1604,12 +1653,18 @@ returns three values:
       (= nfail (make-config-max-fail config)) (list nfail stamps false)
       :else
       (let [[rgen1 rgen2] (random-generator-split rgen)
-            result (generate ((make-config-size config) ntest) rgen2 gen)]
+            size ((make-config-size config) ntest)
+            result (generate size rgen2 gen)]
         ((make-config-print-every config) ntest (check-result-arguments-list result))
         (case (check-result-ok result)
           nil (recur rgen1 ntest (+ 1 nfail) stamps)
           true (recur rgen1 (+ 1 ntest) nfail (conj stamps (check-result-stamp result)))
-          false (list ntest stamps result))))))
+          false
+          ;; found a counter-example of size size. we now try to
+          ;; recursively find a smaller counter-example of size (dec
+          ;; size)
+          (let [smallest-result (smallest-counter-example gen size result rgen)]
+            [ntest stamps smallest-result]))))))
 
 (declare done write-arguments)
 

@@ -769,3 +769,19 @@
               (and (function? proc)
                    (function? (proc 999999999))
                    (integer? ((proc 999999999) 999999999)))))))
+
+
+;; --- Counter example shrinkage ---------
+
+(deftest shrinking-t
+  (let [counter-list
+        (-> (property [x (list integer)]
+                      (every? even? x))
+            (check-quick)
+            (check-result-arguments-list)
+
+            ;; well ...
+            (first)
+            (first)
+            (second))]
+    (is (= 1 (count counter-list)))))
