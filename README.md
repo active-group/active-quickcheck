@@ -2,8 +2,6 @@
 
 A Clojure port of the original Haskell QuickCheck.
 
-[![Clojars Project](https://img.shields.io/clojars/v/de.active-group/active-quickcheck.svg)](https://clojars.org/de.active-group/active-quickcheck)
-
 (We looked at
 [ClojureCheck](https://bitbucket.org/kotarak/clojurecheck),
 [`clojure.test.generative`](https://github.com/clojure/test.generative),
@@ -19,13 +17,11 @@ from John Hughes's original paper.
 
 ## Releases and Dependency Information
 
-Latest stable release: 0.5.0
-
-[![Clojars Project](https://img.shields.io/clojars/v/active-quickcheck.svg)](https://clojars.org/active-quickcheck)
+[![Clojars Project](https://img.shields.io/clojars/v/de.active-group/active-quickcheck.svg)](https://clojars.org/de.active-group/active-quickcheck)
 
 [Leiningen](https://github.com/technomancy/leiningen) dependency information:
 
-    [active-quickcheck "0.5.0"]
+    [de.active-group/active-quickcheck "0.7.0"]
 
 ## Usage
 
