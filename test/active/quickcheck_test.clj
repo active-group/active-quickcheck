@@ -225,6 +225,7 @@
      (quickcheck
       (property [x byte]
                 (and (integer? x)
+                     (instance? java.lang.Byte x)
                      (>= x -128)
                      (<= x 127)))))))
 
@@ -234,6 +235,7 @@
      (quickcheck
       (property [x unsigned-byte]
                 (and (integer? x)
+                     (instance? java.lang.Short x)
                      (>= x 0)
                      (<= x 255)))))))
 
@@ -243,6 +245,7 @@
      (quickcheck
       (property [x short]
                 (and (integer? x)
+                     (instance? java.lang.Short x)
                      (>= x -32768)
                      (<= x 32767)))))))
 
@@ -252,6 +255,7 @@
      (quickcheck
       (property [x unsigned-short]
                 (and (integer? x)
+                     (instance? java.lang.Integer x)
                      (>= x 0)
                      (<= x 65535)))))))
 
@@ -261,6 +265,7 @@
      (quickcheck
       (property [x int]
                 (and (integer? x)
+                     (int? x)
                      (>= x -2147483648)
                      (<= x 2147483647)))))))
 
@@ -270,6 +275,7 @@
      (quickcheck
       (property [x unsigned-int]
                 (and (integer? x)
+                     (int? x)
                      (>= x 0)
                      (<= x 4294967295)))))))
 
@@ -279,6 +285,7 @@
      (quickcheck
       (property [x long]
                 (and (integer? x)
+                     (instance? java.lang.Long x)
                      (>= x -9223372036854775808)
                      (<= x 9223372036854775807)))))))
 
