@@ -2,6 +2,8 @@
 
 A Clojure port of the original Haskell QuickCheck.
 
+[![Clojars Project](https://img.shields.io/clojars/v/de.active-group/active-quickcheck.svg)](https://clojars.org/de.active-group/active-quickcheck)
+
 (We looked at
 [ClojureCheck](https://bitbucket.org/kotarak/clojurecheck),
 [`clojure.test.generative`](https://github.com/clojure/test.generative),
