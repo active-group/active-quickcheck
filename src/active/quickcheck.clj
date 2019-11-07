@@ -188,7 +188,6 @@
   [size with-size-size
    generator with-size-generator])
 (def resize make-with-size)
-
 ; int random-gen (generator a) -> a
 (defn generate ; aka run
   "Extract a value from a generator, using size n and random generator rgen."
@@ -1450,7 +1449,7 @@ saying whether the property is satisfied."
   (assoc res :stamp (conj (check-result-stamp res) stamp)))
 
 ; result (list (pair (union #f symbol) value)) -> result
-(defn- result-add-arguments
+(defn result-add-arguments
   [res args]
   (assoc res :arguments-list
     (conj (check-result-arguments-list res) args)))
@@ -1465,7 +1464,7 @@ saying whether the property is satisfied."
 ; - a generator of a Result record
 (declare for-all-with-names)
 
-(defn- coerce->result-generator
+(defn coerce->result-generator
   "Coerce an object to a result generator."
   [thing]
   (cond
