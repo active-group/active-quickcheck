@@ -11,7 +11,7 @@
     (qc/check-result-ok result1) result2
     :else result1))
 
-(defn- result-add-argument-if-empty
+(defn result-add-argument-if-empty
   [res arg]
   (assert (qc/check-result? res))
   (cond
@@ -39,9 +39,9 @@
 
 (defn shrinking
   "
-  Apply shrinks to args and find failing result in the resulting list
+  apply shrinks to args and find failing result in the resulting list
   recursive call shrinking as long as there is a failing result.
-  For every arg there has to be a shrink function
+  for every arg there has to be a shrink function
   "
   [shrinks arg-names args func fuel]
   (assert (= (count shrinks) (count args))
