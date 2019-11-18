@@ -3,6 +3,9 @@
             [clojure.test :refer :all]
             [clojure.spec.alpha :as s]
             [active.random :as random]
+            [active.tree :as tree]
+            [active.integrated-shrink :as shrink]
+            [active.clojure.monad :as monad]
             [clojure.math.numeric-tower :as num])
   (:use active.quickcheck))
 
@@ -792,3 +795,79 @@
             (first)
             (second))]
     (is (= 1 (count counter-list)))))
+
+;; --- shrink tree tests -----
+
+(def t-0 (tree/make-Tree [0] []))
+(def t-12 (tree/make-Tree [12] []))
+(def t-5 (tree/make-Tree [5] []))
+(def t-3 (tree/make-Tree [3] []))
+(def t-1 (tree/make-Tree [1] []))
+(def t-13 (tree/make-Tree [13] []))
+(def t-14 (tree/make-Tree [14] []))
+(def t-2 (tree/make-Tree [2] []))
+(def t-4 (tree/make-Tree [4] []))
+(def t-6 (tree/make-Tree [6] []))
+(def t-7 (tree/make-Tree [7] []))
+(def t-0 (tree/make-Tree [0] []))
+(def t-8 (tree/make-Tree [8] []))
+(def t-9 (tree/make-Tree [9] []))
+
+(def test-gen (random/make-random-generator 12))
+
+(defn test-generate [m] (generate 5 test-gen m))
+
+(deftest find-failing-finds-nothing
+  (testing "if the vector of shrunks contatains no counterexample find-failing returns :no-failing-result"
+    (is (= :no-failing-result (test-generate (find-failing [] (partial < 13)))))
+    (is (= :no-failing-result (test-generate (find-failing [t-12] (partial < 5)))))
+    (is (= :no-failing-result (test-generate (find-failing [t-5 t-3 t-1] (partial < 0)))))
+    (is (= :no-failing-result (test-generate (find-failing [t-12 t-13 t-14] (partial > 20)))))))
+
+(deftest find-failing-finds-result
+  (testing "if the vector of shrunks contains at least one  counterexample it returns the first one"
+    (is (= [t-1 (make-check-result false [] [])] (test-generate (find-failing [t-1] (partial = 3)))))
+    (is (= [t-2 (make-check-result false [] [])] (test-generate (find-failing [t-3 t-4 t-2 t-8 t-2] (partial < 2)))))))
+
+(defn is-counterexample
+  [mresult]
+  (not (check-result-ok (test-generate mresult))))
+
+(defn get-counterexample
+  [mresult]
+  (map second (check-result-arguments-list (test-generate mresult))))
+
+(defn numshrink
+  [x]
+  (cond (= x 0) []
+        (> x 0) [ (quot x 2) (- x 1)]
+        :else [(* x 2) (+ x 1)]))
+
+(deftest for-all-with-shrink-with-name-counterexample
+   (testing "for-all-with-shrink-with-name shrinks an counterexample"
+     (is (= [1] (get-counterexample (for-all-with-shrink-with-names (partial = 0)
+                                                                   ["x"]
+                                                                   [(shrink/integrated numshrink (monad/return 5))]))))
+     (is (= [0] (get-counterexample (for-all-with-shrink-with-names (partial > 0)
+                                                                   ["x"]
+                                                                   [(shrink/integrated numshrink (monad/return 5))]))))
+     (is (= [1] (get-counterexample (for-all-with-shrink-with-names (partial = 0)
+                                                                     "x"
+                                                                     [(shrink/integrated numshrink (monad/return 5))]))))
+     (is (= [3] (get-counterexample (for-all-with-shrink-with-names (partial > 3)
+                                                                   ["x"]
+                                                                   [(shrink/integrated numshrink (monad/return 5))]))))
+     (is (= [0 1] (get-counterexample (for-all-with-shrink-with-names (partial =)
+                                                                     ["x" "y"]
+                                                                     [(shrink/integrated numshrink (monad/return 5))
+                                                                      (shrink/integrated numshrink (monad/return 6))]))))))
+
+(defn numshrinkv [[x]] (map vector (numshrink x)))
+
+(deftest shrinking-gives-counterexample
+  (testing "if shrinking gets an counterexample it returns an counterexample"
+    (is (is-counterexample (shrinking ["x"] (tree/unfold numshrinkv [2]) (partial = 0) 20)))
+    (is (is-counterexample (shrinking ["y"] (tree/unfold numshrinkv [7]) (partial > 3) 20)))
+    (is (is-counterexample (shrinking ["z"] (tree/unfold numshrinkv [3]) (partial < 5) 15)))
+    (is (is-counterexample (shrinking ["v"] (tree/unfold numshrinkv [4]) (partial = 5) 11)))
+    (is (is-counterexample (shrinking ["x"] (tree/unfold numshrinkv [4]) (partial = 3) 11)))))

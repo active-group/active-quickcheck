@@ -14,6 +14,8 @@
   (:use active.random)
   (:require [active.clojure.record :refer [define-record-type]])
   (:require [active.clojure.monad :as monad])
+  (:require [active.tree :as tree])
+  (:require [active.integrated-shrink :as shrink])
   (:require [active.clojure.condition :as c])
   (:require [clojure.spec.alpha :as s])
   (:require [clojure.test :as t])
@@ -46,6 +48,7 @@
 ;; Basic generator combinators
 ;; ---------------------------
 
+; TODO change all (tree/make-Tree n []) with proper shrink trees
 ; [lower, upper]
 (defn choose-integer
   "Generator for integers within a range, bounds are inclusive."
@@ -53,53 +56,53 @@
   (monad/monadic
     [rgen get-random-generator]
     (let [[n _] (random-integer rgen lower upper)])
-    (monad/return n)))
+    (monad/return (tree/make-Tree n []))))
 
 (def choose-byte
   "Generator for bytes in [-128, 127]."
-  (lift->generator
+  (shrink/combine-generators
    byte
    (choose-integer Byte/MIN_VALUE Byte/MAX_VALUE)))
   
 (def choose-unsigned-byte
   "Generator for bytes in [0, 255]."
-  (lift->generator
+  (shrink/combine-generators
    short
    (choose-integer 0 (- (expt 2 Byte/SIZE) 1))))
   
 (def choose-short
   "Generator for shorts in [-32768, 32767]."
-  (lift->generator
+  (shrink/combine-generators
    short
    (choose-integer Short/MIN_VALUE Short/MAX_VALUE)))
 
 (def choose-unsigned-short
   "Generator for bytes in [0, 65535]."
-  (lift->generator
+  (shrink/combine-generators
    int
    (choose-integer 0 (- (expt 2 Short/SIZE) 1))))
 
 (def choose-int
   "Generator for ints in [-2147483648, 2147483647]."
-  (lift->generator
+  (shrink/combine-generators
    int
    (choose-integer Integer/MIN_VALUE Integer/MAX_VALUE)))
 
 (def choose-unsigned-int
   "Generator for bytes in [0, 4294967295]."
-  (lift->generator
+  (shrink/combine-generators
    long
    (choose-integer 0 (- (expt 2 Integer/SIZE) 1))))
 
 (def choose-long
   "Generator for longs in [-9223372036854775808, 9223372036854775807]."
-  (lift->generator
+  (shrink/combine-generators
    long
    (choose-integer Long/MIN_VALUE Long/MAX_VALUE)))
 
 (def choose-unsigned-long
   "Generator for bytes in [0, 18446744073709551615]."
-  (lift->generator
+  (shrink/combine-generators
    bigint
    (choose-integer 0 (- (expt 2 Long/SIZE) 1))))
 
@@ -109,20 +112,20 @@
   (monad/monadic
     [rgen get-random-generator]
     (let [[n _] (random-float rgen lower upper)])
-    (monad/return n)))
+    (monad/return (tree/make-Tree n []))))
 
 (def choose-ascii-char
   "Generator for ASCII characters."
-  (lift->generator char (choose-integer 0 127)))
+  (shrink/generator-apply char (choose-integer 0 127)))
      
 (def choose-ascii-letter
   "Generator for ASCII alphabetic letters."
-  (lift->generator #(get "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz" %)
+  (shrink/generator-apply #(get "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz" %)
                    (choose-integer 0 51)))
 
 (def choose-printable-ascii-char
   "Generator for printable ASCII characters."
-  (lift->generator char (choose-integer 32 127)))
+  (shrink/generator-apply char (choose-integer 32 127)))
 
 (defn- choose-char-with-property
   [pred]
@@ -134,7 +137,7 @@
           (let [[i ngen] (random-integer rg 0 0xffff)
                 c (char i)]
             (if (pred c)
-             (monad/return c)
+             (monad/return (tree/make-Tree c []))
              (recur ngen))))))
 
 (def choose-non-numeric-char
@@ -162,7 +165,7 @@
     [rgen get-random-generator]
     (let [[n _] (random-integer rgen
                                    (int lower) (int upper))])
-    (monad/return (char n))))
+    (monad/return (tree/make-Tree(char n)))))
 
 ; int (generator a) -> (generator a)
 (define-record-type Variant-type
@@ -264,13 +267,15 @@
     (func size)))
 
 ; (list a) -> (generator a)
+; TODO does it make sense to shrink this like an integer?
 (defn choose-one-of
   "Make a generator that yields one of a list of values."
   [lis]
-  (lift->generator #(nth lis %)
+  (shrink/combine-generators #(nth lis %)
     (choose-integer 0 (- (count lis) 1))))
 
 ; (list (gen a)) -> (gen a)
+; TODO doesn't work with trees. Remove it?
 (defn oneof
   "Haskell QuickCheck's oneof"
   [gs]
@@ -281,6 +286,7 @@
 
 ; vector from the paper
 ; (generator a) int -> (generator (list a))
+; TODO make it work with trees
 (defn choose-list
   "Generator for a list of values with size n."
   [el-gen n]
@@ -297,9 +303,10 @@
 (defn choose-string
   "Generator for a string with size n."
   [char-gen n]
-  (lift->generator #(apply str %) (choose-list char-gen n)))
+  (shrink/combine-generators #(apply str %) (choose-list char-gen n)))
 
 (declare choose-mixed)
+; TODO make it work with trees
 (defn choose-symbol
   "Generator for a symbol with size n+1."
   [n]
@@ -320,12 +327,12 @@
 (defn choose-vector
   "Generator for a vector with size n."
   [el-gen n]
-  (lift->generator vec (choose-list el-gen n)))
+  (shrink/combine-generators vec (choose-list el-gen n)))
 
 (defn choose-byte-array
   "Generator for a byte array with size n."
   [n]
-  (lift->generator byte-array (choose-list choose-byte n)))
+  (shrink/combine-generators byte-array (choose-list choose-byte n)))
 
 (defn- map-of-tuples
   [tups]
@@ -335,12 +342,12 @@
   "Generator for a map with size n. The passed element generator must
   generate key-value pairs."
   [el-gen n]
-  (lift->generator map-of-tuples (choose-list el-gen n)))
+  (shrink/combine-generators map-of-tuples (choose-list el-gen n)))
 
 (defn choose-set
   "Generator for a set with size <= n"
   [el-gen n]
-  (lift->generator set (choose-list el-gen n)))
+  (shrink/combine-generators set (choose-list el-gen n)))
 
 ; (list (promise (generator a))) -> (generator a)
 (defn choose-mixed
@@ -605,7 +612,7 @@
 (def arbitrary-rational
   "Arbitrary rational number."
   (make-arbitrary
-    (lift->generator make-rational
+    (shrink/combine-generators make-rational
       (arbitrary-generator arbitrary-integer)
       (arbitrary-generator arbitrary-natural))))
 
@@ -627,10 +634,10 @@
 (def arbitrary-float
   "Arbitrary float."
   (make-arbitrary
-   (lift->generator fraction
-                    (arbitrary-generator arbitrary-integer)
-                    (arbitrary-generator arbitrary-integer)
-                    (arbitrary-generator arbitrary-integer))))
+   (shrink/combine-generators fraction
+                              (arbitrary-generator arbitrary-integer)
+                              (arbitrary-generator arbitrary-integer)
+                              (arbitrary-generator arbitrary-integer))))
 
 (def coarbitrary-float
   "Coarbitrary float."
@@ -685,7 +692,7 @@
   "Arbitrary fixed-size vector."
   [& arbitrary-els]
   (make-arbitrary
-    (apply lift->generator
+    (apply shrink/combine-generators
       vector
       (map arbitrary-generator arbitrary-els))))
 
@@ -706,7 +713,7 @@
   "Arbitrary record."
   [construct accessors & arbitrary-els]
   (make-arbitrary
-   (apply lift->generator
+   (apply shrink/combine-generators
           construct
           (map arbitrary-generator arbitrary-els))))
 
@@ -1454,6 +1461,22 @@ saying whether the property is satisfied."
   (assoc res :arguments-list
     (conj (check-result-arguments-list res) args)))
 
+(defn result-mapped
+  "Monoidal plus of result."
+  [result1 result2]
+  (assert (check-result? result1))
+  (assert (check-result? result2))
+  (cond
+    (check-result-ok result1) result2
+    :else result1))
+
+(defn result-add-argument-if-empty
+  [res arg]
+  (assert (check-result? res))
+  (cond
+    (empty? (check-result-arguments-list res)) (assoc res :arguments-list arg)
+    :else res))
+
 (def nothing
   (make-check-result nil [] []))
 
@@ -1462,14 +1485,15 @@ saying whether the property is satisfied."
 ; - a boolean
 ; - a Result record
 ; - a generator of a Result record
-(declare for-all-with-names)
+(declare for-all-with-shrink-with-names)
 
 (defn coerce->result-generator
   "Coerce an object to a result generator."
   [thing]
   (cond
-    (instance? Property-type thing) (for-all-with-names (property-func thing) (property-arg-names thing)
-                                      (property-args thing))
+    (instance? Property-type thing) (for-all-with-shrink-with-names (property-func thing)
+                                                                    (property-arg-names thing)
+                                                                    (property-args thing))
     (instance? Boolean thing) (monad/return (assoc nothing :ok thing))
     (instance? Check-result-type thing) (monad/return thing)
     :else thing )); 
@@ -1497,6 +1521,57 @@ saying whether the property is satisfied."
     [args (monad/sequ (map coerce->generator args))
      res (coerce->result-generator (apply func args))]
     (monad/return (result-add-arguments res (map list arg-names args)))))
+
+(defn find-failing
+  [smaller func]
+  (monad/monadic
+   ; TODO use apply
+   [results (monad/sequ (mapv coerce->result-generator (mapv (partial apply func)
+                                                                (mapv tree/tree-outcome smaller))))]
+   (let [failingResults (filter (fn [[_ result]] (not (check-result-ok result)))
+                                (mapv vector smaller results))])
+   (monad/return
+    (cond
+      (empty? failingResults) :no-failing-result
+      :else (first failingResults)))))
+
+(defn shrinking
+  "
+  get shrinks of args and find failing result in the resulting list
+  recursive call shrinking as long as there is a failing result.
+  "
+  [arg-names args func fuel]
+  (assert (tree/tree? args) "args has to be a tree")
+  (let [children (tree/tree-shrinks args)]
+    (monad/monadic
+     [maybeFailingResult (find-failing children func)]
+     (cond
+       (or (= maybeFailingResult :no-failing-result)
+           (<= fuel 0)) (monad/return (assoc nothing :ok true))
+       :else (monad/monadic
+              (let [[shrunk, failure] maybeFailingResult])
+              [result (shrinking arg-names shrunk func (- fuel 1))]
+              (monad/return
+               (result-add-argument-if-empty (result-mapped result failure)
+                                                       (mapv vector arg-names (tree/tree-outcome shrunk)))))))))
+
+
+(defn for-all-with-shrink-with-names
+  "Bind name to generated value, try to shrink, supplying informative name.,"
+  [func arg-names arg-trees]
+  (assert (= (count arg-names) (count arg-trees))
+          "Number of arg-names does not match number of arguments")
+  (let [arg-trees (map coerce->generator arg-trees)]
+    (monad/monadic
+      [args-tree (apply shrink/combine-generators vector arg-trees)
+      res (coerce->result-generator (apply func (tree/tree-outcome args-tree)))
+      shrunken (shrinking arg-names args-tree func 20)]
+     (let [result (result-add-arguments res [(vector arg-names (tree/tree-outcome args-tree))])])
+                                        ; TODO is this lazy. Check efficiency
+     (cond
+       (check-result-ok result) (monad/return result)
+       (check-result-ok shrunken) (monad/return result)
+       :else (monad/return shrunken)))))
 
 (defmacro ==>
   "Create a property that only has to hold when its prerequisite holds."
