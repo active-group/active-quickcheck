@@ -16,6 +16,10 @@
   (and (tree? tree)
        (every? valid-tree? (tree-shrinks tree))))
 
+(defn to-list
+  "turns a tree into list containing all the elments fo the tree"
+  [tree]
+  (cons (tree-outcome tree) (concat (map to-list (tree-shrinks tree)))))
 
 (defn map-tree
   [f tree]
