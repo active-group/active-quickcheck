@@ -1,11 +1,22 @@
-(ns active.integrated-shrink-test
+(ns active.generator-applicative-test
   (:require [clojure.test :refer :all]
             [active.random :as random]
             [active.quickcheck :as qc]
             [active.clojure.monad :as monad]
             [active.tree :as tree])
-      (:use [active.manual-shrink-test :only [generate is-counterexample get-counterexample numshrink]])
-      (:use active.integrated-shrink))
+      (:use active.generator-applicative))
+
+(def test-gen (random/make-random-generator 12))
+
+(defn generate [m] (qc/generate 5 test-gen m))
+
+(defn is-counterexample
+  [mresult]
+  (not (qc/check-result-ok (generate mresult))))
+
+(defn get-counterexample
+  [mresult]
+  (map second (qc/check-result-arguments-list (generate mresult))))
 
 
 (deftest generator-map-works
@@ -16,6 +27,12 @@
   (testing "applying of geneator gives a new generator with trees in it"
     (is (tree/valid-tree? (generate (generator-apply (monad/return (tree/make-Tree (partial + 1) []))
                                                      (monad/return (tree/make-Tree 0 []))))))))
+
+(defn numshrink
+  [x]
+  (cond (= x 0) []
+        (> x 0) [ (quot x 2) (- x 1)]
+        :else [(* x 2) (+ x 1)]))
 
 
 (deftest integrated-works

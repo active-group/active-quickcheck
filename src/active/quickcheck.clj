@@ -15,7 +15,8 @@
   (:require [active.clojure.record :refer [define-record-type]])
   (:require [active.clojure.monad :as monad])
   (:require [active.tree :as tree])
-  (:require [active.integrated-shrink :as shrink])
+  (:require [active.generator-applicative :refer [integrated combine-generators]])
+  (:require [active.shrink :as shrink])
   (:require [active.clojure.condition :as c])
   (:require [clojure.spec.alpha :as s])
   (:require [clojure.test :as t])
@@ -60,49 +61,49 @@
 
 (def choose-byte
   "Generator for bytes in [-128, 127]."
-  (shrink/combine-generators
+  (combine-generators
    byte
    (choose-integer Byte/MIN_VALUE Byte/MAX_VALUE)))
   
 (def choose-unsigned-byte
   "Generator for bytes in [0, 255]."
-  (shrink/combine-generators
+  (combine-generators
    short
    (choose-integer 0 (- (expt 2 Byte/SIZE) 1))))
   
 (def choose-short
   "Generator for shorts in [-32768, 32767]."
-  (shrink/combine-generators
+  (combine-generators
    short
    (choose-integer Short/MIN_VALUE Short/MAX_VALUE)))
 
 (def choose-unsigned-short
   "Generator for bytes in [0, 65535]."
-  (shrink/combine-generators
+  (combine-generators
    int
    (choose-integer 0 (- (expt 2 Short/SIZE) 1))))
 
 (def choose-int
   "Generator for ints in [-2147483648, 2147483647]."
-  (shrink/combine-generators
+  (combine-generators
    int
    (choose-integer Integer/MIN_VALUE Integer/MAX_VALUE)))
 
 (def choose-unsigned-int
   "Generator for bytes in [0, 4294967295]."
-  (shrink/combine-generators
+  (combine-generators
    long
    (choose-integer 0 (- (expt 2 Integer/SIZE) 1))))
 
 (def choose-long
   "Generator for longs in [-9223372036854775808, 9223372036854775807]."
-  (shrink/combine-generators
+  (combine-generators
    long
    (choose-integer Long/MIN_VALUE Long/MAX_VALUE)))
 
 (def choose-unsigned-long
   "Generator for bytes in [0, 18446744073709551615]."
-  (shrink/combine-generators
+  (combine-generators
    bigint
    (choose-integer 0 (- (expt 2 Long/SIZE) 1))))
 
@@ -116,16 +117,16 @@
 
 (def choose-ascii-char
   "Generator for ASCII characters."
-  (shrink/generator-apply char (choose-integer 0 127)))
-     
+  (combine-generators char (choose-integer 0 127)))
+
 (def choose-ascii-letter
   "Generator for ASCII alphabetic letters."
-  (shrink/generator-apply #(get "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz" %)
-                   (choose-integer 0 51)))
+  (combine-generators #(get "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz" %)
+                      (choose-integer 0 51)))
 
 (def choose-printable-ascii-char
   "Generator for printable ASCII characters."
-  (shrink/generator-apply char (choose-integer 32 127)))
+  (combine-generators char (choose-integer 32 127)))
 
 (defn- choose-char-with-property
   [pred]
@@ -271,7 +272,7 @@
 (defn choose-one-of
   "Make a generator that yields one of a list of values."
   [lis]
-  (shrink/combine-generators #(nth lis %)
+  (combine-generators #(nth lis %)
     (choose-integer 0 (- (count lis) 1))))
 
 ; (list (gen a)) -> (gen a)
@@ -292,30 +293,27 @@
   [el-gen n]
   (letfn [(recurse [n]
             (if (zero? n)
-              (monad/return '())
-              (monad/monadic
-                [val el-gen
-                 rest (recurse (- n 1))]
-                (monad/return (conj rest val)))))]
+              (monad/return (tree/make-Tree '() []))
+              (apply combine-generators cons el-gen (recurse (- n 1)))))]
     (recurse n)))
 
 ; (generator char) int -> (generator string)
 (defn choose-string
   "Generator for a string with size n."
   [char-gen n]
-  (shrink/combine-generators #(apply str %) (choose-list char-gen n)))
+  (combine-generators #(apply str %) (choose-list char-gen n)))
 
 (declare choose-mixed)
 ; TODO make it work with trees
 (defn choose-symbol
   "Generator for a symbol with size n+1."
   [n]
-  (monad/monadic
+  (let
     [fst (choose-string choose-non-numeric-char 1)
      rst (choose-string (choose-mixed (list choose-alphanumeric-char
                                         (choose-one-of (seq "*+!-_?"))))
            n)]
-    (monad/return (symbol (str fst rst)))))
+    (combine-generators (fn [f r] (symbol (str f r))) fst rst)))
 
 (defn choose-keyword
   "Generator for a keyword with size n+1."
@@ -327,12 +325,12 @@
 (defn choose-vector
   "Generator for a vector with size n."
   [el-gen n]
-  (shrink/combine-generators vec (choose-list el-gen n)))
+  (combine-generators vec (choose-list el-gen n)))
 
 (defn choose-byte-array
   "Generator for a byte array with size n."
   [n]
-  (shrink/combine-generators byte-array (choose-list choose-byte n)))
+  (combine-generators byte-array (choose-list choose-byte n)))
 
 (defn- map-of-tuples
   [tups]
@@ -342,12 +340,12 @@
   "Generator for a map with size n. The passed element generator must
   generate key-value pairs."
   [el-gen n]
-  (shrink/combine-generators map-of-tuples (choose-list el-gen n)))
+  (combine-generators map-of-tuples (choose-list el-gen n)))
 
 (defn choose-set
   "Generator for a set with size <= n"
   [el-gen n]
-  (shrink/combine-generators set (choose-list el-gen n)))
+  (combine-generators set (choose-list el-gen n)))
 
 ; (list (promise (generator a))) -> (generator a)
 (defn choose-mixed
@@ -612,7 +610,7 @@
 (def arbitrary-rational
   "Arbitrary rational number."
   (make-arbitrary
-    (shrink/combine-generators make-rational
+    (combine-generators make-rational
       (arbitrary-generator arbitrary-integer)
       (arbitrary-generator arbitrary-natural))))
 
@@ -634,7 +632,7 @@
 (def arbitrary-float
   "Arbitrary float."
   (make-arbitrary
-   (shrink/combine-generators fraction
+   (combine-generators fraction
                               (arbitrary-generator arbitrary-integer)
                               (arbitrary-generator arbitrary-integer)
                               (arbitrary-generator arbitrary-integer))))
@@ -692,7 +690,7 @@
   "Arbitrary fixed-size vector."
   [& arbitrary-els]
   (make-arbitrary
-    (apply shrink/combine-generators
+    (apply combine-generators
       vector
       (map arbitrary-generator arbitrary-els))))
 
@@ -713,7 +711,7 @@
   "Arbitrary record."
   [construct accessors & arbitrary-els]
   (make-arbitrary
-   (apply shrink/combine-generators
+   (apply combine-generators
           construct
           (map arbitrary-generator arbitrary-els))))
 
@@ -1563,7 +1561,7 @@ saying whether the property is satisfied."
           "Number of arg-names does not match number of arguments")
   (let [arg-trees (map coerce->generator arg-trees)]
     (monad/monadic
-      [args-tree (apply shrink/combine-generators vector arg-trees)
+      [args-tree (apply combine-generators vector arg-trees)
       res (coerce->result-generator (apply func (tree/tree-outcome args-tree)))
       shrunken (shrinking arg-names args-tree func 20)]
      (let [result (result-add-arguments res [(vector arg-names (tree/tree-outcome args-tree))])])

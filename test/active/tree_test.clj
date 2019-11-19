@@ -1,7 +1,12 @@
 (ns active.tree-test
   (:require [clojure.test :refer :all])
-  (:use [active.manual-shrink-test :only [numshrink]])
   (:use active.tree))
+
+(defn numshrink
+  [x]
+  (cond (= x 0) []
+        (> x 0) [ (quot x 2) (- x 1)]
+        :else [(* x 2) (+ x 1)]))
 
 (deftest map-tree-produces-tree
   (testing "map for tree gives back a valid tree"

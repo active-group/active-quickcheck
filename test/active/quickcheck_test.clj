@@ -4,7 +4,7 @@
             [clojure.spec.alpha :as s]
             [active.random :as random]
             [active.tree :as tree]
-            [active.integrated-shrink :as shrink]
+            [active.generator-applicative :refer [integrated]]
             [active.clojure.monad :as monad]
             [clojure.math.numeric-tower :as num])
   (:use active.quickcheck))
@@ -52,6 +52,10 @@
                  ys (list integer)]
                 (= (reverse (concat xs ys)) (concat (reverse ys) (reverse xs))))))))
 
+(macroexpand
+(property [xs (list integer)
+           ys (list integer)]
+          (= (reverse (concat xs ys)) (concat (reverse ys) (reverse xs)))))
 (deftest reverse-distributes-over-concat-broken
   (testing "reverse distributes over concat: broken"
     (is
@@ -628,6 +632,10 @@
                                   :baz string])]
                 (and (instance? Foo x) (integer? (:bar x)) (string? (:baz x))))))))
 
+(macroexpand '(property [x (record ->Foo [:bar integer 
+                            :baz string])]
+          (and (instance? Foo x) (integer? (:bar x)) (string? (:baz x)))))
+
 (deftest record2
   (testing "arbitrary-record works"
     (is
@@ -847,20 +855,20 @@
    (testing "for-all-with-shrink-with-name shrinks an counterexample"
      (is (= [1] (get-counterexample (for-all-with-shrink-with-names (partial = 0)
                                                                    ["x"]
-                                                                   [(shrink/integrated numshrink (monad/return 5))]))))
+                                                                   [(integrated numshrink (monad/return 5))]))))
      (is (= [0] (get-counterexample (for-all-with-shrink-with-names (partial > 0)
                                                                    ["x"]
-                                                                   [(shrink/integrated numshrink (monad/return 5))]))))
+                                                                   [(integrated numshrink (monad/return 5))]))))
      (is (= [1] (get-counterexample (for-all-with-shrink-with-names (partial = 0)
                                                                      "x"
-                                                                     [(shrink/integrated numshrink (monad/return 5))]))))
+                                                                     [(integrated numshrink (monad/return 5))]))))
      (is (= [3] (get-counterexample (for-all-with-shrink-with-names (partial > 3)
                                                                    ["x"]
-                                                                   [(shrink/integrated numshrink (monad/return 5))]))))
+                                                                   [(integrated numshrink (monad/return 5))]))))
      (is (= [0 1] (get-counterexample (for-all-with-shrink-with-names (partial =)
                                                                      ["x" "y"]
-                                                                     [(shrink/integrated numshrink (monad/return 5))
-                                                                      (shrink/integrated numshrink (monad/return 6))]))))))
+                                                                     [(integrated numshrink (monad/return 5))
+                                                                      (integrated numshrink (monad/return 6))]))))))
 
 (defn numshrinkv [[x]] (map vector (numshrink x)))
 

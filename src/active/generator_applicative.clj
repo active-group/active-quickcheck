@@ -1,4 +1,4 @@
-(ns active.integrated-shrink
+(ns active.generator-applicative
   (:require [active.random :as random])
   (:require  [active.clojure.monad :as monad])
   (:require  [active.tree :as tree]))
