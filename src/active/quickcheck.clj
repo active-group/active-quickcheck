@@ -57,7 +57,7 @@
   (monad/monadic
     [rgen get-random-generator]
     (let [[n _] (random-integer rgen lower upper)])
-    (monad/return (tree/make-Tree n []))))
+    (monad/return (tree/unfold (partial shrink/shrink-towards 0) n))))
 
 (def choose-byte
   "Generator for bytes in [-128, 127]."
@@ -166,7 +166,7 @@
     [rgen get-random-generator]
     (let [[n _] (random-integer rgen
                                    (int lower) (int upper))])
-    (monad/return (tree/make-Tree(char n)))))
+    (monad/return (tree/make-Tree (char n) []))))
 
 ; int (generator a) -> (generator a)
 (define-record-type Variant-type
