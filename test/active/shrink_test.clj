@@ -52,7 +52,6 @@
     (is (every? coll? (to-list (sequence-shrink-one  [(unfold (partial shrink-towards 0) 1)
                                                       (unfold (partial shrink-towards 0) 4)]))))))
 
-
 (deftest removes-works
   (testing "removes produces a collection of collections"
     (is (empty? (removes 3 [])))
@@ -62,8 +61,6 @@
   (testing "removes works right"
     (is [['b 'c] ['a 'c] ['a 'b]] (removes 1 ['a 'b 'c]))
     (is [[3 4 5 6] [1 2 5 6] [1 2 3 4]] (removes 2 [1 2 3 4 5 6]))))
-
-(shrink-list ['e 'f 'h 'g])
 
 (deftest shrink-list-works
   (testing "shrink-list produces a collection of collections"

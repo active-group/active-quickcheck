@@ -10,30 +10,40 @@
   [outcome tree-outcome
    shrinks tree-shrinks])
 
+(defn lazy-tree
+  [strict-outcome strict-shrinks]
+  (make-Tree strict-outcome (lazy-seq strict-shrinks)))
+
 (defn valid-tree?
-  "checks if tree-shrink contains only trees"
+  "checks if tree-shrink contains only trees until (don't use this on big trees)"
   [tree]
+  (and (tree? tree) (every? valid-tree? (tree-shrinks tree))))
+
+(defn approx-valid-tree?
+  "checks if tree-shrink contains only trees until depth and width n (trees get to big)"
+  [n tree]
+  (or (<= n 0)
   (and (tree? tree)
-       (every? valid-tree? (tree-shrinks tree))))
+       (every? (partial approx-valid-tree? (- n 1)) (take n (tree-shrinks tree))))))
 
 (defn to-list
   "turns a tree into list containing all the elments fo the tree"
   [tree]
-  (cons (tree-outcome tree) (concat (map to-list (tree-shrinks tree)))))
+  (cons (tree-outcome tree) (lazy-seq (apply concat (map to-list (tree-shrinks tree))))))
 
 (defn map-tree
   [f tree]
-  (make-Tree (f (tree-outcome tree))
-         (mapv (partial map-tree f) (tree-shrinks tree))))
+  (lazy-tree (f (tree-outcome tree))
+             (map (partial map-tree f) (tree-shrinks tree))))
 
 (defn map-outcome
   [f tree]
-  (make-Tree (f (tree-outcome tree))
+  (lazy-tree (f (tree-outcome tree))
              (tree-shrinks tree)))
 
 (defn pure
   [x]
-  (make-Tree x []))
+  (lazy-tree x []))
 
 (defn apply-tree
   [ftree tree]
@@ -41,20 +51,20 @@
         f-tree-list (tree-shrinks ftree)
         y (tree-outcome tree)
         y-tree-list (tree-shrinks tree)]
-    (make-Tree (f y)
-               (vec (concat (map (fn [x] (apply-tree x tree)) f-tree-list)
-                            (map (fn [y] (apply-tree ftree y)) y-tree-list))))))
+    (lazy-tree (f y)
+               (concat (map (fn [x] (apply-tree x tree)) f-tree-list)
+                       (map (fn [y] (apply-tree ftree y)) y-tree-list)))))
 
 (declare unfold-forest)
 (defn unfold
   "Build a 'Tree' from an unfolding function and a seed value."
   [unfolding-f seed]
-  (make-Tree seed (unfold-forest unfolding-f seed)))
+  (lazy-tree seed (unfold-forest unfolding-f seed)))
 
 (defn unfold-forest
   "Build a list of trees from an unfolding function and a seed value."
   [unfolding-f seed]
-  (mapv (partial unfold unfolding-f )
+  (map (partial unfold unfolding-f )
         (unfolding-f seed)))
 
 (defn expand
@@ -70,7 +80,7 @@
   [unfolding-f tree]
   (let [node (tree-outcome tree)
         leafs (tree-shrinks tree)]
-    (make-Tree node
-               (concat (mapv (partial expand unfolding-f)
+    (lazy-tree node
+               (concat (map (partial expand unfolding-f)
                              leafs)
                        (unfold-forest unfolding-f tree)))))
