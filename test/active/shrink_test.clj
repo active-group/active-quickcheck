@@ -74,5 +74,6 @@
 
 (deftest sequence-shrink-list-works
   (testing "sequence-shrink-list produces tree with lists"
+    (is valid-tree? (sequence-shrink-list []))
     (is (valid-tree? (sequence-shrink-list [(unfold (partial shrink-towards 0) 5)
                                             (unfold (partial shrink-towards 0) 3)])))))

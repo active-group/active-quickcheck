@@ -763,16 +763,18 @@
 
 (defn arbitrary-sequence-like
   "Arbitrary sequence-like container."
-  [choose-sequence sequence->list arbitrary-el]
+  [list->sequence arbitrary-el]
   (make-arbitrary
     (sized
       (fn [n]
-        (monad/free-bind (choose-integer 0 n)
-          (fn [length]
-            (choose-sequence (arbitrary-generator arbitrary-el) length)))))))
+        (monad/monadic
+         [length-tree (choose-integer 0 n)]
+         (let [length (tree/tree-outcome length-tree)])
+         [list-of-trees (monad/sequ (map coerce->generator(repeat length arbitrary-el)))]
+         (monad/return (tree/map-tree list->sequence (shrink/sequence-shrink-list list-of-trees))))))))
 
 (defn coarbitrary-sequence-like
-  "Coarbitr sequence-like container."
+  "Coarbitrary sequence-like container."
   [choose-sequence sequence->list coarbitrary-el]
   (make-coarbitrary
     (fn [sequ gen]
@@ -787,7 +789,7 @@
 (defn arbitrary-list
   "Arbitrary list."
   [arbitrary-el]
-  (arbitrary-sequence-like choose-list identity arbitrary-el))
+  (arbitrary-sequence-like list arbitrary-el))
 
 (defn coarbitrary-list
   "Coarbitrary list."

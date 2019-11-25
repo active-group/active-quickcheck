@@ -26,6 +26,38 @@
     (is (tree/approx-valid-tree? 5 (test-generate (choose-list choose-int 4))))
     (is (every? coll? (take 100 (tree/to-list (test-generate (choose-list choose-int 3))))))))
 
+
+(deftest arbitrary-sequence-like-works
+  (testing "arbitrary-sequ-like produces tree of sequence"
+    (is (tree/approx-valid-tree? 5 (test-generate
+                                    (arbitrary-generator
+                                     (arbitrary-sequence-like list
+                                                              choose-int)))))
+    (is (every? list? (take 100 (tree/to-list
+                                 (test-generate
+                                  (arbitrary-generator
+                                   (arbitrary-sequence-like list
+                                                            choose-int)))))))
+    (is (tree/approx-valid-tree? 5 (test-generate
+                                    (arbitrary-generator
+                                     (arbitrary-sequence-like vec
+                                                              choose-int)))))
+    (is (every? vector? (take 100 (tree/to-list
+                                   (test-generate
+                                    (arbitrary-generator
+                                     (arbitrary-sequence-like vec
+                                                              choose-int)))))))))
+
+(deftest arbitrary-list-works
+  (testing "arbitrary-sequ-like produces tree of sequence"
+    (is (tree/approx-valid-tree? 5 (test-generate
+                                    (arbitrary-generator
+                                     (arbitrary-list choose-int)))))
+    (is (every? list? (take 100 (tree/to-list
+                                 (test-generate
+                                  (arbitrary-generator
+                                   (arbitrary-list choose-int)))))))))
+
 (def t-0 (tree/lazy-tree [0] []))
 (def t-12 (tree/lazy-tree [12] []))
 (def t-5 (tree/lazy-tree [5] []))
@@ -40,18 +72,24 @@
 (def t-0 (tree/lazy-tree [0] []))
 (def t-8 (tree/lazy-tree [8] []))
 (def t-9 (tree/lazy-tree [9] []))
+(def tree-list (tree/lazy-tree ['(1 2 3)] []))
 
 (deftest find-failing-finds-nothing
   (testing "if the vector of shrunks contains no counterexample find-failing returns :no-failing-result"
     (is (= :no-failing-result (test-generate (find-failing [] (partial < 13)))))
     (is (= :no-failing-result (test-generate (find-failing [t-12] (partial < 5)))))
     (is (= :no-failing-result (test-generate (find-failing [t-5 t-3 t-1] (partial < 0)))))
-    (is (= :no-failing-result (test-generate (find-failing [t-12 t-13 t-14] (partial > 20)))))))
+    (is (= :no-failing-result (test-generate (find-failing [t-12 t-13 t-14] (partial > 20)))))
+    (is (= :no-failing-result (test-generate (find-failing [tree-list] list?))))))
 
 (deftest find-failing-finds-result
   (testing "if the vector of shrunks contains at least one  counterexample it returns the first one"
-    (is (= [t-1 (make-check-result false [] [])] (test-generate (find-failing [t-1] (partial = 3)))))
-    (is (= [t-2 (make-check-result false [] [])] (test-generate (find-failing [t-3 t-4 t-2 t-8 t-2] (partial < 2)))))))
+    (is (= [t-1 (make-check-result false [] [])]
+           (test-generate (find-failing [t-1] (partial = 3)))))
+    (is (= [t-2 (make-check-result false [] [])]
+           (test-generate (find-failing [t-3 t-4 t-2 t-8 t-2] (partial < 2)))))
+    (is (= [tree-list (make-check-result false [] [])]
+           (test-generate (find-failing [tree-list] (fn [x] (< (count x) 2))))))))
 
 (defn is-counterexample
   [mresult]
@@ -66,6 +104,10 @@
   (cond (= x 0) []
         (> x 0) [ (quot x 2) (- x 1)]
         :else [(* x 2) (+ x 1)]))
+
+(defn listshrink
+  [xs]
+  (if (empty? xs) [] [(rest xs)]))
 
 (deftest for-all-with-shrink-with-name-counterexample
    (testing "for-all-with-shrink-with-name shrinks an counterexample"
@@ -84,9 +126,14 @@
      (is (= [0 1] (get-counterexample (for-all-with-shrink-with-names (partial =)
                                                                      ["x" "y"]
                                                                      [(integrated numshrink (monad/return 5))
-                                                                      (integrated numshrink (monad/return 6))]))))))
+                                                                      (integrated numshrink (monad/return 6))]))))
+     (is (= [[3]] (get-counterexample
+                   (for-all-with-shrink-with-names empty?
+                                                   ["x" ]
+                                                   [(integrated listshrink (monad/return [1 2 3]))]))))))
 
 (defn numshrinkv [[x]] (map vector (numshrink x)))
+(defn listshrinkv [[xs]] (map vector (listshrink xs)))
 
 (deftest shrinking-gives-counterexample
   (testing "if shrinking gets an counterexample it returns an counterexample"
@@ -94,7 +141,8 @@
     (is (is-counterexample (shrinking ["y"] (tree/unfold numshrinkv [7]) (partial > 3) 20)))
     (is (is-counterexample (shrinking ["z"] (tree/unfold numshrinkv [3]) (partial < 5) 15)))
     (is (is-counterexample (shrinking ["v"] (tree/unfold numshrinkv [4]) (partial = 5) 11)))
-    (is (is-counterexample (shrinking ["x"] (tree/unfold numshrinkv [4]) (partial = 3) 11)))))
+    (is (is-counterexample (shrinking ["x"] (tree/unfold numshrinkv [4]) (partial = 3) 11)))
+    (is (is-counterexample (shrinking ["xs"] (tree/unfold listshrinkv [[1 2 3]]) empty? 11)))))
 
 
 ;; -- quickcheck tests --
@@ -110,6 +158,15 @@
      (quickcheck
       (property [x integer]
                 (= x x))))))
+
+(deftest ok-multible-arguments
+  (testing "trivaial property with multible arguments"
+    (is
+     (quickcheck
+      (property [x integer
+                 y integer
+                 z integer]
+                (and (= x x ) (= y y) (= z z)))))))
 
 (deftest unqotueq
   (testing "unquote syntax"
@@ -133,6 +190,13 @@
            (check-quick
             (property [x integer]
                       (< x 5)))))))
+
+(deftest ok-list
+  (testing "trivial property for list"
+    (is
+     (quickcheck
+      (property [xs (list integer)]
+                (= xs xs))))))
 
 (deftest reverse-distributes-over-concat
   (testing "reverse distributes over concat"
