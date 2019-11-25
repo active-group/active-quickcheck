@@ -56,8 +56,13 @@
   [lower upper]
   (monad/monadic
     [rgen get-random-generator]
-    (let [[n _] (random-integer rgen lower upper)])
-    (monad/return (tree/unfold (partial shrink/shrink-towards 0) n))))
+    (let [[n _] (random-integer rgen lower upper)
+          ;shrinkTowards the nearest number to zero within the range
+          towards-num (cond
+                        (neg? upper) upper
+                        (neg? lower) 0
+                        :else lower)])
+    (monad/return (tree/unfold (partial shrink/shrink-towards towards-num) n))))
 
 (def choose-byte
   "Generator for bytes in [-128, 127]."
