@@ -56,6 +56,7 @@
 
 (deftest combine-generators-works
   (testing "compining of geneator gives a new generator with trees in it"
+    (is (tree/valid-tree? (generate (combine-generators vector))))
     (is (tree/valid-tree? (generate (combine-generators vector
                                                         (integrated numshrink (monad/return 5))))))
     (is (tree/valid-tree? (generate (combine-generators vector
@@ -63,4 +64,12 @@
                                                         (monad/return (tree/lazy-tree 2 []))))))
     (is (tree/valid-tree? (generate (combine-generators vector
                                                         (monad/return (tree/lazy-tree 'a []))
-                                                        (monad/return (tree/lazy-tree 'b []))))))))
+                                                        (monad/return (tree/lazy-tree 'b []))))))
+    (is (tree/valid-tree? (generate (combine-generators list
+                                                        (monad/return (tree/lazy-tree 'a []))
+                                                        (monad/return (tree/lazy-tree 'b []))))))
+    (is (tree/approx-valid-tree? 3 (generate (combine-generators list
+                                                                 (integrated numshrink (monad/return 1))
+                                                                 (integrated numshrink (monad/return 3))
+                                                                 (integrated numshrink (monad/return 4))))))))
+

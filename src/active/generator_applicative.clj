@@ -5,7 +5,7 @@
 (defn generator-pure
   "pure with generators which contains trees"
   [x]
-  monad/return (tree/pure x))
+  (monad/return (tree/pure x)))
 
 (defn generator-map
   [f mtree]
@@ -29,29 +29,28 @@
               (cond
                 (= num-args 0) (apply f (reverse args))
                 :else (fn [x] (curry-helper f (- num-args 1) (cons x args)))))]
-    (fn [x] (curry-helper f (- num-args 1) [x]))))
+    (cond
+      (zero? num-args) (fn [] (f))
+      :else (fn [x] (curry-helper f (- num-args 1) [x])))))
 
 (defn combine-generators-curry
   "
   combines n generators with trees applicative with function f
   f has to be curried for n arguments
   "
-  [f & [a & rest]]
-  (reduce generator-apply (generator-map f a) rest))
+  ([f] (generator-pure (f)))
+  ([f & [a & rest]]
+  (reduce generator-apply (generator-map f a) rest)))
 
 (defn combine-generators
   "
   applies a n-aritrary function applicative to generators
   "
   [f & arg-generators]
-  (apply (partial combine-generators-curry (curry f (count arg-generators)))
-         arg-generators))
+  (apply combine-generators-curry (curry f (count arg-generators)) arg-generators))
 
 (defn apply-curry
-  [f collection]
-  (cond
-    (empty? collection) f
-    :else (apply-curry (f (first collection)) (rest collection))))
+  [f [gen-a & gen-rest]] (apply-curry (f gen-a) gen-rest))
 
 (defn integrated
   "applies a shrinker to a generator"
