@@ -789,7 +789,7 @@
 (defn arbitrary-list
   "Arbitrary list."
   [arbitrary-el]
-  (arbitrary-sequence-like list arbitrary-el))
+  (arbitrary-sequence-like #(into () %) arbitrary-el))
 
 (defn coarbitrary-list
   "Coarbitrary list."

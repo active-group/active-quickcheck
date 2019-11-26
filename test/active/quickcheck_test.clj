@@ -43,6 +43,7 @@
   (testing "choose-list produce tree of lists"
     (is (tree/approx-valid-tree? 5 (test-generate (choose-list choose-int 0))))
     (is (every? coll? (take 100 (tree/to-list (test-generate (choose-list choose-int 2))))))
+    (is (every? (partial every? int?) (take 100 (tree/to-list (test-generate (choose-list choose-int 2))))))
     (is (tree/approx-valid-tree? 5 (test-generate (choose-list choose-int 4))))
     (is (every? coll? (take 100 (tree/to-list (test-generate (choose-list choose-int 3))))))))
 
@@ -98,7 +99,11 @@
     (is (every? list? (take 100 (tree/to-list
                                  (test-generate
                                   (arbitrary-generator
-                                   (arbitrary-list choose-int)))))))))
+                                   (arbitrary-list choose-int)))))))
+    (is (every? (partial every? int?) (take 100 (tree/to-list
+                                                 (test-generate
+                                                  (arbitrary-generator
+                                                   (arbitrary-list choose-int)))))))))
 
 (def t-0 (tree/lazy-tree [0] []))
 (def t-12 (tree/lazy-tree [12] []))
