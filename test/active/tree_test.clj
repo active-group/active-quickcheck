@@ -50,3 +50,15 @@
   (testing "tree-outcome of a big tree runs fast"
     (let [bignumber 99999999999999999999999999999999]
       (is bignumber (tree-outcome (unfold (partial shrink/shrink-towards 0) bignumber))))))
+
+(deftest filter-tree-works
+  (testing "filter-tree produces a list of trees"
+    (is (coll? (filter-tree odd? (unfold numshrink 20))))
+    (is (every? valid-tree? (filter-tree even? (unfold numshrink 6)))))
+  (testing "filter-tree filters"
+    (is (every? odd? (apply concat
+                            (mapv to-list
+                                  (filter-tree odd? (unfold numshrink 16))))))
+    (is (every? even? (apply concat
+                             (mapv to-list
+                                   (filter-tree even? (unfold numshrink 13))))))))

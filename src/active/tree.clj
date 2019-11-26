@@ -84,3 +84,17 @@
                (concat (map (partial expand unfolding-f)
                              leafs)
                        (unfold-forest unfolding-f tree)))))
+
+; (a -> Bool) -> Tree a -> [Tree a]
+(defn filter-tree
+  "remove all elements wich doesn't statisfy the predicate.
+  Retrurns a list of trees"
+  [predicate tree]
+  (defn go
+    [tree]
+    (let [outcome (tree-outcome tree)
+          shrinks (tree-shrinks tree)]
+      (if (predicate outcome)
+        [(lazy-tree outcome (apply concat (mapv go shrinks)))]
+        (apply concat (mapv go shrinks)))))
+  (go tree))
