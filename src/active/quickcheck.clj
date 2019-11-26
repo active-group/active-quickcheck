@@ -15,7 +15,9 @@
   (:require [active.clojure.record :refer [define-record-type]])
   (:require [active.clojure.monad :as monad])
   (:require [active.tree :as tree])
-  (:require [active.generator-applicative :refer [integrated combine-generators]])
+  (:require [active.generator-applicative :refer [integrated
+                                                  combine-generators
+                                                  combine-generators-curry]])
   (:require [active.shrink :as shrink])
   (:require [active.clojure.condition :as c])
   (:require [clojure.spec.alpha :as s])
@@ -167,11 +169,7 @@
 (defn choose-char
   "Generator for chars within a range, bonds are inclusive."
   [lower upper]
-  (monad/monadic
-    [rgen get-random-generator]
-    (let [[n _] (random-integer rgen
-                                   (int lower) (int upper))])
-    (monad/return (tree/make-Tree (char n) []))))
+  (combine-generators char (choose-integer (int lower) (int upper))))
 
 ; int (generator a) -> (generator a)
 (define-record-type Variant-type
@@ -292,15 +290,10 @@
 
 ; vector from the paper
 ; (generator a) int -> (generator (list a))
-; TODO make it work with trees
 (defn choose-list
   "Generator for a list of values with size n."
   [el-gen n]
-  (letfn [(recurse [n]
-            (if (zero? n)
-              (monad/return (tree/make-Tree '() []))
-              (apply combine-generators cons el-gen (recurse (- n 1)))))]
-    (recurse n)))
+  (apply combine-generators list (repeat n el-gen)))
 
 ; (generator char) int -> (generator string)
 (defn choose-string
@@ -318,14 +311,14 @@
      rst (choose-string (choose-mixed (list choose-alphanumeric-char
                                         (choose-one-of (seq "*+!-_?"))))
            n)]
-    (combine-generators (fn [f r] (symbol (str f r))) fst rst)))
+    (combine-generators-curry (fn [f] (fn [r] (symbol (str f r)))) fst rst)))
 
 (defn choose-keyword
   "Generator for a keyword with size n+1."
   [n]
   (monad/monadic
     [s (choose-symbol n)]
-    (monad/return (keyword s))))
+    (monad/return (tree/map-tree keyword s))))
 
 (defn choose-vector
   "Generator for a vector with size n."
@@ -341,6 +334,9 @@
   [tups]
   (reduce (fn [m [k v]] (assoc m k v)) {} tups))
 
+; TODO map-of-tuples doesn't preserve length. Maybe change this
+#_(map-of-tuples [['a 1] ['a 2]])
+
 (defn choose-map
   "Generator for a map with size n. The passed element generator must
   generate key-value pairs."
@@ -354,9 +350,13 @@
 
 ; (list (promise (generator a))) -> (generator a)
 (defn choose-mixed
-  "Generator that chooses from a sequence of generators."
+  "Generator that chooses from a sequence of generators.
+  This has no shrinking between the gens"
   [gens]
-  (monad/free-bind (choose-one-of gens) force)) ; ???
+  (monad/monadic
+   [n (choose-integer 0 (- (count gens) 1))]
+   (force (nth gens (tree/tree-outcome n)))))
+  ;(monad/free-bind (choose-one-of gens) force)) ; ???
 
 ; (list (list int (generator a))) -> (generator a)
 (declare pick)
@@ -799,7 +799,7 @@
 (defn arbitrary-vector
   "Arbitrary vector."
   [arbitrary-el]
-  (arbitrary-sequence-like choose-vector #(into () %) arbitrary-el))
+  (arbitrary-sequence-like vec arbitrary-el))
 
 (defn coarbitrary-vector
   "Coarbitrary vector."
@@ -808,7 +808,7 @@
 
 (def arbitrary-byte-array
   "Arbitrary byte-array."
-  (arbitrary-sequence-like (fn [_ n] (choose-byte-array n)) #(into () %) arbitrary-byte))
+  (arbitrary-sequence-like byte-array arbitrary-byte))
 
 (def coarbitrary-byte-array
   "coarbitrary byte-array."
@@ -817,7 +817,7 @@
 (defn arbitrary-map
   "Arbitrary map over the given arbitrary key and value."
   [arbitrary-key arbitrary-value]
-  (arbitrary-sequence-like choose-map #(into () %) (arbitrary-tuple arbitrary-key arbitrary-value)))
+  (arbitrary-sequence-like map-of-tuples (arbitrary-tuple arbitrary-key arbitrary-value)))
 
 (defn coarbitrary-map
   "coarbitrary map over the given arbitrary key and value."
@@ -827,7 +827,7 @@
 (defn arbitrary-set
   "Arbitrary set."
   [arbitrary-el]
-  (arbitrary-sequence-like choose-set #(into () %) arbitrary-el))
+  (arbitrary-sequence-like set arbitrary-el))
 
 (defn coarbitrary-set
   "Coarbitrary set."
@@ -836,23 +836,23 @@
 
 (def arbitrary-ascii-string
   "Arbitrary string of ASCII characters."
-  (arbitrary-sequence-like choose-string #(into () %) arbitrary-ascii-char))
+  (arbitrary-sequence-like #(apply str %) arbitrary-ascii-char))
 
 (def coarbitrary-ascii-string
   "Coarbitrary string of ASCII characters."
-  (coarbitrary-sequence-like choose-string #(into () %) coarbitrary-ascii-char))
+  (coarbitrary-sequence-like #(apply str %) #(into () %) coarbitrary-ascii-char))
 
 (def arbitrary-printable-ascii-string
   "Arbitrary string of printable ASCII characters."
-  (arbitrary-sequence-like choose-string #(into () %) arbitrary-printable-ascii-char))
+  (arbitrary-sequence-like #(apply str %) arbitrary-printable-ascii-char))
 
 (def arbitrary-string
   "Arbitrary string."
-  (arbitrary-sequence-like choose-string #(into () %) arbitrary-char))
+  (arbitrary-sequence-like #(apply str %) arbitrary-char))
 
 (def coarbitrary-string
   "Coarbitrary string."
-  (coarbitrary-sequence-like choose-string #(into () %) coarbitrary-char))
+  (coarbitrary-sequence-like #(apply str %) #(into () %) coarbitrary-char))
 
 (defn- arbitrary-symbol-like
   [choose]
