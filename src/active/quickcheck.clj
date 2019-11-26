@@ -1479,7 +1479,7 @@ saying whether the property is satisfied."
   [res arg]
   (assert (check-result? res))
   (cond
-    (empty? (check-result-arguments-list res)) (assoc res :arguments-list arg)
+    (empty? (check-result-arguments-list res)) (result-add-arguments res arg)
     :else res))
 
 (def nothing
@@ -1558,7 +1558,7 @@ saying whether the property is satisfied."
               [result (shrinking arg-names shrunk func (- fuel 1))]
               (monad/return
                (result-add-argument-if-empty (result-mapped result failure)
-                                                       (mapv vector arg-names (tree/tree-outcome shrunk)))))))))
+                                                       [(vector arg-names (tree/tree-outcome shrunk))])))))))
 
 
 (defn for-all-with-shrink-with-names

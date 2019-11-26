@@ -19,7 +19,6 @@
     (is (tree/approx-valid-tree? 5 (test-generate choose-int)))
     (is (every? int? (take 100 (tree/to-list (test-generate choose-int)))))))
 
-
 (deftest choose-byte-works
   (testing "choose-byte produces tree of byte"
     (is (tree/approx-valid-tree? 5 (test-generate choose-byte)))))
@@ -144,7 +143,7 @@
 
 (defn get-counterexample
   [mresult]
-  (map second (check-result-arguments-list (test-generate mresult))))
+  (second (first (first (check-result-arguments-list (test-generate mresult))))))
 
 (defn numshrink
   [x]
