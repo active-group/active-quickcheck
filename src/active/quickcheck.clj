@@ -739,22 +739,27 @@
   [arbitrary-el & kwargs]
   (let [opts (apply hash-map kwargs)
         {kind :kind, :or {kind 'clojure.core/vector?}} opts
-        choose-sequence (cond
-                          (= kind 'clojure.core/vector?) choose-vector
-                          (= kind 'clojure.core/list?) choose-list
-                          (= kind 'clojure.core/set?) choose-set)
+        list->sequence (cond
+                         (= kind 'clojure.core/vector?) vec
+                         (= kind 'clojure.core/list?) #(into () %)
+                         (= kind 'clojure.core/set?) set)
         {count :count} opts
         {min-count :min-count, :or {min-count 0}} opts
-        {max-count :max-count} opts]
+        {max-count :max-count} opts
+        generator-el (arbitrary-generator arbitrary-el)]
     (make-arbitrary
      (sized
       (fn [n]
-        (let [sizer (if count
-                      (monad/return count)
-                      (choose-integer min-count (if max-count max-count n)))]
-          (monad/free-bind sizer
-                           (fn [len]
-                             (choose-sequence (arbitrary-generator arbitrary-el) len)))))))))
+        (if count
+          (choose-list (coerce->generator arbitrary-el) count)
+          (monad/monadic
+           [length-tree (choose-integer min-count (if max-count max-count n))]
+           (let [length (tree/tree-outcome length-tree)])
+           [list-of-trees (monad/sequ
+                           (map coerce->generator(repeat length arbitrary-el)))]
+           (monad/return
+            (tree/map-tree list->sequence (shrink/sequence-shrink-list
+                                           list-of-trees))))))))))
 
 (defn coarbitrary-coll-of
   "Coarbitrary collection mimicking Clojure spec's coll-of"

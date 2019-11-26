@@ -291,7 +291,7 @@
       (property [x (spec keyword?)]
                 (s/valid? keyword? x))))))
 
-(deftest clojure-spec-def
+#_(deftest clojure-spec-def
   (s/def ::deffed string?)
   (is
    (quickcheck
@@ -335,7 +335,7 @@
      (quickcheck
       (property [x (spec (s/coll-of integer? :min-count 23 :max-count 25))]
                 (s/valid? (s/coll-of integer? :min-count 23 :max-count 25) x)))))
-  (testing "coll-of ::deffed"
+  #_(testing "coll-of ::deffed"
     (s/def ::deffed string?)
     (is
      (quickcheck
