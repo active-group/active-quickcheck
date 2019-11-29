@@ -85,6 +85,11 @@
                              leafs)
                        (unfold-forest unfolding-f tree)))))
 
+(defn lazy-cat' [colls]
+  (lazy-seq
+   (if (seq colls)
+     (concat (first colls) (lazy-cat' (next colls))))))
+
 ; (a -> Bool) -> Tree a -> [Tree a]
 (defn filter-tree
   "remove all elements wich doesn't statisfy the predicate.
@@ -95,6 +100,6 @@
     (let [outcome (tree-outcome tree)
           shrinks (tree-shrinks tree)]
       (if (predicate outcome)
-        [(lazy-tree outcome (apply concat (mapv go shrinks)))]
-        (apply concat (mapv go shrinks)))))
+        [(lazy-tree outcome (lazy-cat' (map go shrinks)))]
+        (lazy-cat' (map go shrinks)))))
   (go tree))

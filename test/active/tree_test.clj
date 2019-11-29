@@ -62,3 +62,17 @@
     (is (every? even? (apply concat
                              (mapv to-list
                                    (filter-tree even? (unfold numshrink 13))))))))
+
+(deftest filter-tree-lazy
+  (testing "filter-tree of a big tree runs fast"
+    (let [bignumber 99999999999999999999999999999999]
+      (is bignumber (tree-outcome
+                     (first
+                      (filter-tree odd?
+                                   (unfold (partial shrink/shrink-towards 0)
+                                           bignumber)))))
+      (is (tree?
+           (first
+            (filter-tree even?
+                         (unfold (partial shrink/shrink-towards 0)
+                                 bignumber))))))))

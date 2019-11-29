@@ -408,10 +408,11 @@
                (if (= 0 n)
                  (monad/monadic (monad/return nil))
                  (monad/monadic [x (resize (+ (* 2 k) n) gen)]
-                          (if (pred x)
-                            (monad/return x)
+                          (if (pred (tree/tree-outcome x))
+                            (monad/return (first (tree/filter-tree pred x)))
                             (mytry (+ k 1) (- n 1))))))]
     (sized (fn [n] (mytry 0 (max 1 n))))))
+
 
 (defn such-that-generator
   [gen pred]

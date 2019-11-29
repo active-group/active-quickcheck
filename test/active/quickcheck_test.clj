@@ -342,6 +342,11 @@
       (property [x (spec (s/coll-of ::deffed))]
                 (s/valid? (s/coll-of ::deffed) x))))))
 
+(deftest such-that-maybe-lazy
+  (testing "tree outcome on big tree from such-that-maybe is fast"
+    (let [bignum 9999999999999999999]
+      (tree/tree-outcome (test-generate (such-that-maybe (choose-integer 0 bignum) odd?))))))
+
 (deftest clojure-spec-and-such-that
   (testing "and integer? even?"
     (is
@@ -354,7 +359,7 @@
       (property [x (spec (s/and integer? even? #(> % 10)))]
                 (and (integer? x) (even? x) (> x 10)))))))
 
-(deftest clojure-spec-or
+#_(deftest clojure-spec-or
   (s/def ::uno integer?)
   (s/def ::due string?)
   (is
@@ -372,7 +377,7 @@
                   (= x :c))))))
 
 
-(deftest clojure-spec-recursive
+#_(deftest clojure-spec-recursive
   (s/def ::leaf string?)
   (s/def ::other (s/coll-of ::inner))
   (s/def ::inner (s/or :leaf ::leaf :other ::other))
