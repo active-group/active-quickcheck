@@ -1574,14 +1574,12 @@ saying whether the property is satisfied."
   (let [arg-trees (map coerce->generator arg-trees)]
     (monad/monadic
       [args-tree (apply combine-generators vector arg-trees)
-      res (coerce->result-generator (apply func (tree/tree-outcome args-tree)))
-      shrunken (shrinking arg-names args-tree func 20)]
-     (let [result (result-add-arguments res [(vector arg-names (tree/tree-outcome args-tree))])])
-                                        ; TODO is this lazy. Check efficiency
-     (cond
-       (check-result-ok result) (monad/return result)
-       (check-result-ok shrunken) (monad/return result)
-       :else (monad/return shrunken)))))
+      res (coerce->result-generator (apply func (tree/tree-outcome args-tree)))]
+      (let [result (result-add-arguments res [(vector arg-names (tree/tree-outcome args-tree))])])
+      [maybe-shrunken-result (cond
+                               (check-result-ok result) (monad/return result)
+                               :else (shrinking arg-names args-tree func 20))]
+      (monad/return (result-mapped maybe-shrunken-result result)))))
 
 (defmacro ==>
   "Create a property that only has to hold when its prerequisite holds."
