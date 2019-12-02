@@ -231,9 +231,10 @@
             (recur
               (cont
                 (let [func (promote-func m1)]
+                  (tree/lazy-tree
                   (fn [& vals]
-                     (let [b (run (apply func vals) size rgen1)]
-                       b))))
+                    (let [b (run (apply func vals) size rgen1)]
+                       (tree/tree-outcome b))) [])))
               size rgen2)
             :else (assert false
                           (str "invalid generator: " (pr-str m1)))))
@@ -254,9 +255,11 @@
                 
         (promote? m)
         (let [func (promote-func m)]
+          (tree/lazy-tree
           (fn [& vals]
              (let [b (run (apply func vals) size rgen)]
-               b)))
+               (tree/tree-outcome b)))
+          []))
         
       :else (assert false
                     (str "invalid gen: " (pr-str m)))))]
@@ -365,6 +368,7 @@
   [lis]
   (monad/monadic
     [n (choose-integer 1 (apply + (map first lis)))]
+    (let [n (tree/tree-outcome n)])
     (monad/return (pick n lis))))
 
 (defn pick
@@ -908,7 +912,7 @@
         [args (arbitrary-generator arbitrary-arg-tuple)
          t
          ((coarbitrary-coarbitrary coarbitrary-result)
-          (apply func args)
+          (apply func (tree/tree-outcome args))
           gen)]
         (monad/return t))))))
 

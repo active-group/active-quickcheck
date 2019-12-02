@@ -649,8 +649,11 @@
     (is
      (quickcheck
       (property [proc (boolean -> integer)]
-                (and (function? proc)
-                     (integer? (proc true))))))))
+                (function? proc))))
+    (is
+     (quickcheck
+      (property [proc (boolean -> integer)]
+                     (integer? (proc true)))))))
 
 (deftest integer-function
   (testing "creating a function int -> int works"
