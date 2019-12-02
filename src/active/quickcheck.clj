@@ -232,7 +232,7 @@
               (cont
                 (let [func (promote-func m1)]
                   (tree/lazy-tree
-                  (fn [& vals]
+                  (fm [& vals]
                     (let [b (run (apply func vals) size rgen1)]
                        (tree/tree-outcome b))) [])))
               size rgen2)
@@ -256,7 +256,7 @@
         (promote? m)
         (let [func (promote-func m)]
           (tree/lazy-tree
-          (fn [& vals]
+          (fm [& vals]
              (let [b (run (apply func vals) size rgen)]
                (tree/tree-outcome b)))
           []))
@@ -444,6 +444,35 @@
 
 ;; Arbitraries
 ;; -----------
+
+(defrecord MyFn [f graph]
+  clojure.lang.IFn
+  (invoke [this]
+    (let [ret (f)]
+      (swap! graph assoc [] ret)
+      ret))
+  (invoke [this arg]
+    (let [ret (f arg)]
+      (swap! graph assoc [arg] ret)
+      ret))
+  (invoke [this arg1 arg2]
+    (let [ret (f arg1 arg2)]
+      (swap! graph assoc [arg1 arg2] ret)
+      ret))
+  (applyTo [this args]
+    (let [ret (apply f args)]
+      (swap! graph assoc args ret)))
+  Object
+  (toString [this] (str "Function: " (deref (:graph this)))))
+
+(defn current-graph [myfn]
+  (deref (:graph myfn)))
+
+(defmacro fm
+  [[ & args] [ & body]]
+  (let [f# `(fn ~(vec args) ~body)
+        graph# `(atom {})]
+    `(->MyFn ~f# ~graph# )))
 
 (def arbitrary-boolean
   "Arbitrary boolean."
@@ -1775,7 +1804,7 @@ returns three values:
   (when (first arg)
     (print (first arg))
     (print " = "))
-  (print (second arg)))
+  (print (map str (second arg))))
 
 ; (list (pair (union nil symbol) value))
 (defn- write-arguments
