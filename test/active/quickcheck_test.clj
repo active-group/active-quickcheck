@@ -1008,6 +1008,42 @@
 
 ;; --- Counter example shrinkage ---------
 
+(defn argument-list
+  [prop]
+  (second (first (first (check-result-arguments-list (check-quick prop))))))
+
+(deftest shrinking-works
+  (testing "shrinking gives the smallest counterexample"
+    (is (= [0] (argument-list (property [x integer]
+                                        (< x x)))))
+    (is (= [0 0] (argument-list (property [x integer
+                                           y integer]
+                                          (< x x)))))
+    (is (= [0 0] (argument-list (property [x integer
+                                           y integer]
+                                          (< x y)))))
+    (is (= [1 0] (argument-list (property [x natural
+                                           y natural]
+                                          (or (> y 1)
+                                              (= x y))))))
+    (is (= [[0]] (argument-list (property [xs (list int)]
+                                          (empty? xs)))))
+    (is (= [[] [0 0 0]] (argument-list
+                         (property [xs (list integer)
+                                    cs (list natural)]
+                                   (or (= (count xs) (count cs))
+                                       (< (count cs) 3)))))))
+  (testing "after a counterexample is shrunken it is still a counterexample"
+    (letfn [(prop [xs ys f]
+            (and (list? xs) (f xs ys) (= (reverse ys) ys)))]
+      (is
+       (not
+        (apply prop (argument-list (property [f ((list integer) -> boolean)
+                                               xs (list integer)
+                                               ys (list integer)]
+                                              (prop xs ys f)))))))))
+
+
 (deftest shrinking-t
   (let [counter-list
         (-> (property [x (list integer)]
