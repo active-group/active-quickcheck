@@ -649,7 +649,7 @@
     (is
      (quickcheck
       (property [proc (boolean -> integer)]
-                (function? proc))))
+                (function-memorize? proc))))
     (is
      (quickcheck
       (property [proc (boolean -> integer)]
@@ -660,7 +660,7 @@
     (is
      (quickcheck
       (property [proc (integer -> integer)]
-                (and (function? proc)
+                (and (function-memorize? proc)
                      (integer? (proc 17))))))))
 
 (deftest natural-function
@@ -668,7 +668,7 @@
     (is
      (quickcheck
       (property [proc (integer -> natural)]
-                (and (function? proc)
+                (and (function-memorize? proc)
                      (and (integer? (proc 17)))))))))
 
 
@@ -678,7 +678,7 @@
     (is
      (quickcheck
       (property [proc (rational -> integer)]
-                (and (function? proc)
+                (and (function-memorize? proc)
                      (integer? (proc 2/3))))))))
 
 (deftest real-function
@@ -686,7 +686,7 @@
     (is
       (quickcheck
        (property [proc (float -> integer)]
-                 (and (function? proc)
+                 (and (function-memorize? proc)
                       (integer? (proc 17.5))))))))
 
 (deftest char-function
@@ -694,7 +694,7 @@
     (is
      (quickcheck
       (property [proc (char -> integer)]
-                (and (function? proc)
+                (and (function-memorize? proc)
                      (integer? (proc \a))))))))
 
 (deftest ascii-char-function
@@ -702,7 +702,7 @@
     (is
      (quickcheck
       (property [proc (ascii-char -> integer)]
-                (and (function? proc)
+                (and (function-memorize? proc)
                      (integer? (proc \a))))))))
      
 (deftest string-function
@@ -710,7 +710,7 @@
     (is
      (quickcheck
       (property [proc (string -> integer)]
-                (and (function? proc)
+                (and (function-memorize? proc)
                      (integer? (proc "foo"))))))))
 
 (deftest ascii-string-function
@@ -718,7 +718,7 @@
     (is
      (quickcheck
       (property [proc (ascii-string -> integer)]
-                (and (function? proc)
+                (and (function-memorize? proc)
                      (integer? (proc "foo"))))))))
 
 (deftest symbol-function
@@ -726,7 +726,7 @@
     (is
      (quickcheck
       (property [proc (symbol -> integer)]
-                (and (function? proc)
+                (and (function-memorize? proc)
                      (integer? (proc 'foo))))))))
 
 (deftest mixed-function
@@ -736,7 +736,7 @@
       (property [proc ((mixed integer? integer
                               string?  string)
                        -> integer)]
-                (and (function? proc)
+                (and (function-memorize? proc)
                      (integer? (proc 15))
                      (integer? (proc "foo"))))))))
 
@@ -745,7 +745,7 @@
     (is
      (quickcheck
       (property [proc ((one-of = "foo" "bar" "baz") -> integer)]
-                (and (function? proc)
+                (and (function-memorize? proc)
                      (integer? (proc "foo"))))))))
 
 (deftest vector-function
@@ -753,7 +753,7 @@
     (is
      (quickcheck
       (property [proc ((vector integer) -> integer)]
-                (and (function? proc)
+                (and (function-memorize? proc)
                      (integer? (proc [15 13]))))))))
 
 (deftest set-function
@@ -761,7 +761,7 @@
     (is
      (quickcheck
       (property [proc ((set integer) -> integer)]
-                (and (function? proc)
+                (and (function-memorize? proc)
                      (integer? (proc #{15 13}))))))))
 
 (deftest map-function
@@ -769,7 +769,7 @@
     (is
      (quickcheck
       (property [proc ((map keyword integer) -> integer)]
-                (and (function? proc)
+                (and (function-memorize? proc)
                      (integer? (proc {:b 0 :a 42}))))))))
 
 (deftest function-function
@@ -777,7 +777,7 @@
     (is
       (quickcheck
        (property [proc ((char -> boolean) -> integer)]
-                 (and (function? proc)
+                 (and (function-memorize? proc)
                       (integer? (proc #(= % \A)))))))))
 
 (deftest simple-spec-function
@@ -785,7 +785,7 @@
     (is
      (quickcheck
       (property [proc ((spec integer?) -> integer)]
-                (and (function? proc)
+                (and (function-memorize? proc)
                      (integer? (proc 42))))))))
 
 (deftest and-spec-function
@@ -793,7 +793,7 @@
     (is
      (quickcheck
       (property [proc ((spec (s/and integer? even? #(> % 10))) -> integer)]
-                (and (function? proc)
+                (and (function-memorize? proc)
                      (integer? (proc 42))))))))
 
 (deftest ==>q
@@ -877,7 +877,7 @@
   [^{:spec string?} bar foo-bar
    ^{:spec string?} bla foo-bla])
 
-(deftest active-clojure-record-spec
+#_(deftest active-clojure-record-spec
   (is
    (quickcheck
     (property
@@ -987,7 +987,7 @@
   (is
    (quickcheck
     (property [proc (integer -> integer)]
-              (and (function? proc)
+              (and (function-memorize? proc)
                    (integer? (proc 0))
                    (integer? (proc 999999999)))))))
 
@@ -995,14 +995,14 @@
   (is
    (quickcheck
     (property [proc ((integer -> integer) -> integer)]
-              (and (function? proc)
+              (and (function-memorize? proc)
                    (integer? (proc inc))))))
 
   (is
    (quickcheck
     (property [proc (integer -> (integer -> integer))]
-              (and (function? proc)
-                   (function? (proc 999999999))
+              (and (function-memorize? proc)
+                   (function-memorize? (proc 999999999))
                    (integer? ((proc 999999999) 999999999)))))))
 
 

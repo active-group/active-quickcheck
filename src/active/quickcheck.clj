@@ -188,6 +188,54 @@
   [func promote-func])
 (def promote make-promote)
 
+(defrecord MyFn [f graph]
+  clojure.lang.IFn
+  (invoke [this]
+    (let [ret (f)]
+      (swap! graph assoc [] ret)
+      ret))
+  (invoke [this arg]
+    (let [ret (f arg)]
+      (swap! graph assoc [arg] ret)
+      ret))
+  (invoke [this arg1 arg2]
+    (let [ret (f arg1 arg2)]
+      (swap! graph assoc [arg1 arg2] ret)
+      ret))
+  (invoke [this arg1 arg2 arg3]
+    (let [ret (f arg1 arg2 arg3)]
+      (swap! graph assoc [arg1 arg2 arg3] ret)
+      ret))
+  (invoke [this arg1 arg2 arg3 arg4]
+    (let [ret (f arg1 arg2 arg3 arg4)]
+      (swap! graph assoc [arg1 arg2 arg3 arg4] ret)
+      ret))
+  (invoke [this arg1 arg2 arg3 arg4 arg5]
+    (let [ret (f arg1 arg2 arg3 arg4 arg5)]
+      (swap! graph assoc [arg1 arg2 arg3 arg4 arg5] ret)
+      ret))
+  (applyTo [this args]
+    (let [ret (apply f args)]
+      (swap! graph assoc args ret)
+      ret))
+  (invoke [this arg1 arg2 arg3 arg4 arg5 & args]
+    (let [ret (apply f arg1 arg2 arg3 arg4 arg5 & args)]
+      (swap! graph assoc (apply conj [] arg1 arg2 arg3 arg4 arg5 args) ret)
+      ret))
+  Object
+  (toString [this] (str "Function: " (deref (:graph this)))))
+
+(defn current-graph [myfn]
+  (deref (:graph myfn)))
+
+(defn function-memorize? [arg] (instance? MyFn arg))
+
+(defmacro fm
+  [[ & args] [ & body]]
+  (let [f# `(fn ~(vec args) ~body)
+        graph# `(atom {})]
+    `(->MyFn ~f# ~graph# )))
+
 (define-record-type With-size-type
   ^{:doc "Make a generator with a specified size."}
   (make-with-size size generator)
@@ -444,35 +492,6 @@
 
 ;; Arbitraries
 ;; -----------
-
-(defrecord MyFn [f graph]
-  clojure.lang.IFn
-  (invoke [this]
-    (let [ret (f)]
-      (swap! graph assoc [] ret)
-      ret))
-  (invoke [this arg]
-    (let [ret (f arg)]
-      (swap! graph assoc [arg] ret)
-      ret))
-  (invoke [this arg1 arg2]
-    (let [ret (f arg1 arg2)]
-      (swap! graph assoc [arg1 arg2] ret)
-      ret))
-  (applyTo [this args]
-    (let [ret (apply f args)]
-      (swap! graph assoc args ret)))
-  Object
-  (toString [this] (str "Function: " (deref (:graph this)))))
-
-(defn current-graph [myfn]
-  (deref (:graph myfn)))
-
-(defmacro fm
-  [[ & args] [ & body]]
-  (let [f# `(fn ~(vec args) ~body)
-        graph# `(atom {})]
-    `(->MyFn ~f# ~graph# )))
 
 (def arbitrary-boolean
   "Arbitrary boolean."
