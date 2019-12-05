@@ -15,7 +15,10 @@
   (:require [active.clojure.record :refer [define-record-type]])
   (:require [active.clojure.monad :as monad])
   (:require [active.tree :as tree])
-  (:require [active.generator-applicative :refer [integrated
+  (:require [active.generator-applicative :refer [with-tree?
+                                                  with-tree
+                                                  get-tree
+                                                  integrated
                                                   combine-generators
                                                   combine-generators-curry]])
   (:require [active.shrink :as shrink])
@@ -26,13 +29,8 @@
   (:use clojure.math.numeric-tower)
   (:use [clojure.test :only [assert-expr do-report]]))
 
-(defn lift->generator
-  "Lift a function on values to generators."
-  [func & gens]
-  (monad/monadic
-    [vals (monad/sequ gens)]
-    (monad/return (apply func vals))))
-           
+(def lift->generator combine-generators)
+
 (define-record-type Get-random-generator-type
   ^{:doc "Get the random generator."}
   (make-get-random-generator)
@@ -47,6 +45,17 @@
   [])
 (def get-size (make-get-size))
 
+(defn sequ-with-tree
+  "Evaluate each action in the sequence from left to right, and collect the results."
+  [ms]
+  (let [f (fn f [ms res]
+            (if (seq ms)
+              (monad/free-bind (with-tree (first ms))
+                         (fn [v]
+                           (f (rest ms)
+                              (cons v res))))
+              (monad/free-return (reverse res))))]
+    (f ms '())))
 
 ;; Basic generator combinators
 ;; ---------------------------
@@ -244,6 +253,18 @@
    generator with-size-generator])
 (def resize make-with-size)
 ; int random-gen (generator a) -> a
+
+(define-record-type Maybe-with-tree--type
+  ^{:doc "If the generator contains a tree, use it"}
+  (make-maybe-with-tree maybe-tree)
+  maybe-with-tree?
+  [maybe-tree maybe-get-tree])
+(def maybe-with-tree make-maybe-with-tree)
+
+(defn coerce->tree [arg] (if (tree/tree? arg) (tree/tree-outcome arg) arg))
+
+(defn value->tree [arg] (if (tree/tree? arg) arg (tree/pure arg)))
+
 (defn generate ; aka run
   "Extract a value from a generator, using size n and random generator rgen."
   [n rgen gen]
@@ -257,7 +278,11 @@
               cont (monad/free-bind-cont m)
               [rgen1 rgen2] (random-generator-split rgen)]
           (cond
-            (monad/free-return? m1) (recur (cont (monad/free-return-val m1)) size rgen)
+            (with-tree? m1) (recur (cont (value->tree (run (get-tree m1) size rgen1))) size rgen2)
+
+            (maybe-with-tree? m1) (recur (cont (run (maybe-get-tree m1) size rgen1)) size rgen2)
+
+            (monad/free-return? m1) (recur (cont (coerce->tree (monad/free-return-val m1))) size rgen)
             
             (monad/free-bind? m1) (c/assertion-violation `run "nested bind; should not happen" m m1)
             
@@ -367,9 +392,7 @@
 (defn choose-keyword
   "Generator for a keyword with size n+1."
   [n]
-  (monad/monadic
-    [s (choose-symbol n)]
-    (monad/return (tree/map-tree keyword s))))
+  (combine-generators keyword (choose-symbol n)))
 
 (defn choose-vector
   "Generator for a vector with size n."
@@ -406,7 +429,7 @@
   [gens]
   (monad/monadic
    [n (choose-integer 0 (- (count gens) 1))]
-   (force (nth gens (tree/tree-outcome n)))))
+   (force (nth gens n))))
   ;(monad/free-bind (choose-one-of gens) force)) ; ???
 
 ; (list (list int (generator a))) -> (generator a)
@@ -416,7 +439,6 @@
   [lis]
   (monad/monadic
     [n (choose-integer 1 (apply + (map first lis)))]
-    (let [n (tree/tree-outcome n)])
     (monad/return (pick n lis))))
 
 (defn pick
@@ -459,7 +481,7 @@
   (letfn [(mytry [k n]
                (if (= 0 n)
                  (monad/monadic (monad/return nil))
-                 (monad/monadic [x (resize (+ (* 2 k) n) gen)]
+                 (monad/monadic [x (with-tree (resize (+ (* 2 k) n) gen))]
                           (if (pred (tree/tree-outcome x))
                             (monad/return (first (tree/filter-tree pred x)))
                             (mytry (+ k 1) (- n 1))))))]
@@ -469,7 +491,7 @@
 (defn such-that-generator
   [gen pred]
   (monad/monadic
-   [x (such-that-maybe gen pred)]
+   [x (maybe-with-tree (such-that-maybe gen pred))]
    (if x
      (monad/return x)
      (sized (fn [n] (resize (+ n 1) (such-that-generator gen pred)))))))
@@ -486,7 +508,7 @@
 (defn generate-one-of
   "Randomly choose one of a list of given arbitraries"
   [arbs]
-  (monad/free-bind (choose-one-of arbs)
+  (monad/free-bind (with-tree (choose-one-of arbs))
                    arbitrary-generator))
 
 
@@ -806,9 +828,8 @@
         (if count
           (choose-list (coerce->generator arbitrary-el) count)
           (monad/monadic
-           [length-tree (choose-integer min-count (if max-count max-count n))]
-           (let [length (tree/tree-outcome length-tree)])
-           [list-of-trees (monad/sequ
+           [length (choose-integer min-count (if max-count max-count n))]
+           [list-of-trees (sequ-with-tree
                            (map coerce->generator(repeat length arbitrary-el)))]
            (monad/return
             (tree/map-tree list->sequence (shrink/sequence-shrink-list
@@ -826,9 +847,8 @@
     (sized
       (fn [n]
         (monad/monadic
-         [length-tree (choose-integer 0 n)]
-         (let [length (tree/tree-outcome length-tree)])
-         [list-of-trees (monad/sequ (map coerce->generator(repeat length arbitrary-el)))]
+         [length (choose-integer 0 n)]
+         [list-of-trees (sequ-with-tree (map coerce->generator(repeat length arbitrary-el)))]
          (monad/return (tree/map-tree list->sequence (shrink/sequence-shrink-list list-of-trees))))))))
 
 (defn coarbitrary-sequence-like
@@ -960,7 +980,7 @@
         [args (arbitrary-generator arbitrary-arg-tuple)
          t
          ((coarbitrary-coarbitrary coarbitrary-result)
-          (apply func (tree/tree-outcome args))
+          (apply func args)
           gen)]
         (monad/return t))))))
 
@@ -1626,7 +1646,7 @@ saying whether the property is satisfied."
           "Number of arg-names does not match number of arguments")
   (let [arg-trees (map coerce->generator arg-trees)]
     (monad/monadic
-      [args-tree (apply combine-generators vector arg-trees)
+      [args-tree (with-tree (apply combine-generators vector arg-trees))
       res (coerce->result-generator (apply func (tree/tree-outcome args-tree)))]
       (let [result (result-add-arguments res [(vector arg-names (tree/tree-outcome args-tree))])])
       [maybe-shrunken-result (cond

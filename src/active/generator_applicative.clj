@@ -1,7 +1,17 @@
 (ns active.generator-applicative
+  (:require [active.clojure.record :refer [define-record-type]])
   (:require [active.random :as random])
   (:require  [active.clojure.monad :as monad])
   (:require  [active.tree :as tree]))
+
+(define-record-type With-tree-type
+  ^{:doc "Use full tree in monadic bind"}
+  (make-with-tree tree)
+  with-tree?
+  [tree get-tree])
+(defn with-tree [tree] (make-with-tree tree))
+
+;
 (defn generator-pure
   "pure with generators which contains trees"
   [x]
@@ -10,15 +20,15 @@
 (defn generator-map
   [f mtree]
   (monad/monadic
-   [tree mtree]
+   [tree (with-tree mtree)]
    (monad/return (tree/map-tree f tree))))
 
 (defn generator-apply
   "applicative with generators which contains trees"
   [generator-f generator]
   (monad/monadic
-   [f generator-f
-    tree generator]
+   [f (with-tree generator-f)
+    tree (with-tree generator)]
    (monad/return (tree/apply-tree f tree))))
 
 (defn curry
