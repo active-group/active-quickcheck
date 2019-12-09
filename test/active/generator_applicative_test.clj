@@ -8,7 +8,7 @@
 
 (def test-gen (random/make-random-generator 12))
 
-(defn generate [m] (qc/generate 5 test-gen m))
+(defn generate [m] (qc/generate 5 test-gen m 20))
 
 (defn is-counterexample
   [mresult]

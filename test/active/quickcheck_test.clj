@@ -12,7 +12,7 @@
 
 (def test-gen (random/make-random-generator 12))
 
-(defn test-generate [m] (generate 5 test-gen m))
+(defn test-generate [m] (generate 5 test-gen m 20))
 
 (deftest choose-int-works
   (testing "choose-int produces tree of ints"
@@ -1022,7 +1022,7 @@
     (is (= [0 0] (argument-list (property [x integer
                                            y integer]
                                           (< x y)))))
-    (is (= [1 0] (argument-list (property [x natural
+    (is (= [0 1] (argument-list (property [x natural
                                            y natural]
                                           (or (> y 1)
                                               (= x y))))))

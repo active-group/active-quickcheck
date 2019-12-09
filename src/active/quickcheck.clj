@@ -375,6 +375,14 @@
   (monad/free-bind (choose-integer 0 (- (count gs) 1))
                    #(nth gs 1)))
 
+(defn- choose-sequence-like-in-range
+  [el-gen lower upper]
+  (monad/monadic
+   [length (choose-integer lower upper)]
+   [list-of-trees (sequ-with-tree (repeat length el-gen))]
+   (monad/return (first (tree/filter-tree (fn [sequence] (<= lower (count sequence)))
+                                          (shrink/sequence-shrink-list list-of-trees))))))
+
 ; vector from the paper
 ; (generator a) int -> (generator (list a))
 (defn choose-list
@@ -382,11 +390,19 @@
   [el-gen n]
   (apply combine-generators list (repeat n el-gen)))
 
+(defn choose-list-in-range
+  [el-gen lower upper]
+  (combine-generators #(into () %) (choose-sequence-like-in-range lower upper)))
+
 ; (generator char) int -> (generator string)
 (defn choose-string
   "Generator for a string with size n."
   [char-gen n]
   (combine-generators #(apply str %) (choose-list char-gen n)))
+
+(defn choose-string-in-range
+  [el-gen lower upper]
+  (combine-generators #(apply str %) (choose-sequence-like-in-range lower upper)))
 
 (declare choose-mixed)
 ; TODO make it work with trees
@@ -410,10 +426,18 @@
   [el-gen n]
   (combine-generators vec (choose-list el-gen n)))
 
+(defn choose-vector-in-range
+  [el-gen lower upper]
+  (combine-generators vec (choose-sequence-like-in-range el-gen lower upper)))
+
 (defn choose-byte-array
   "Generator for a byte array with size n."
   [n]
   (combine-generators byte-array (choose-list choose-byte n)))
+
+(defn choose-byte-array-in-range
+  [el-gen lower upper]
+  (combine-generators byte-array (choose-sequence-like-in-range el-gen lower upper)))
 
 (defn- map-of-tuples
   [tups]
@@ -836,15 +860,13 @@
     (make-arbitrary
      (sized
       (fn [n]
+        (combine-generators
+         list->sequence
         (if count
-          (choose-list (coerce->generator arbitrary-el) count)
-          (monad/monadic
-           [length (choose-integer min-count (if max-count max-count n))]
-           [list-of-trees (sequ-with-tree
-                           (map coerce->generator(repeat length arbitrary-el)))]
-           (monad/return
-            (tree/map-tree list->sequence (shrink/sequence-shrink-list
-                                           list-of-trees))))))))))
+          (choose-list generator-el count)
+          (choose-sequence-like-in-range generator-el
+                                         min-count
+                                         (if max-count max-count n)))))))))
 
 (defn coarbitrary-coll-of
   "Coarbitrary collection mimicking Clojure spec's coll-of"
@@ -857,10 +879,18 @@
   (make-arbitrary
     (sized
       (fn [n]
-        (monad/monadic
-         [length (choose-integer 0 n)]
-         [list-of-trees (sequ-with-tree (map coerce->generator(repeat length arbitrary-el)))]
-         (monad/return (tree/map-tree list->sequence (shrink/sequence-shrink-list list-of-trees))))))))
+        (combine-generators list->sequence
+                            (choose-sequence-like-in-range (coerce->generator arbitrary-el) 0 n))))))
+
+(defn arbitrary-sequence-like-in-range
+  "Arbitrary sequence-like container."
+  [list->sequence arbitrary-el lower upper]
+  (make-arbitrary
+   (sized
+    (fn [n]
+      (choose-sequence-like-in-range (coerce->generator arbitrary-el)
+                                     lower
+                                     (min (+ lower n) upper))))))
 
 (defn coarbitrary-sequence-like
   "Coarbitrary sequence-like container."
@@ -880,6 +910,11 @@
   [arbitrary-el]
   (arbitrary-sequence-like #(into () %) arbitrary-el))
 
+(defn arbitrary-list-in-range
+   "Arbitrary list in range (lower,uppper)."
+   [arbitrary-el lower upper]
+   (arbitrary-sequence-like-in-range #(into () %) arbitrary-el lower upper))
+
 (defn coarbitrary-list
   "Coarbitrary list."
   [coarbitrary-el]
@@ -890,6 +925,11 @@
   [arbitrary-el]
   (arbitrary-sequence-like vec arbitrary-el))
 
+(defn arbitrary-vector-in-range
+  "Arbitrary vector in range (lower,uppper)."
+  [arbitrary-el lower upper]
+  (arbitrary-sequence-like-in-range vec arbitrary-el lower upper))
+
 (defn coarbitrary-vector
   "Coarbitrary vector."
   [coarbitrary-el]
@@ -898,6 +938,11 @@
 (def arbitrary-byte-array
   "Arbitrary byte-array."
   (arbitrary-sequence-like byte-array arbitrary-byte))
+
+(defn arbitrary-byte-array-in-range
+  "Arbitrary byte-array in range (lower,uppper)."
+  [arbitrary-el lower upper]
+  (arbitrary-sequence-like-in-range byte-array arbitrary-el lower upper))
 
 (def coarbitrary-byte-array
   "coarbitrary byte-array."
@@ -927,6 +972,11 @@
   "Arbitrary string of ASCII characters."
   (arbitrary-sequence-like #(apply str %) arbitrary-ascii-char))
 
+(defn arbitrary-ascii-string-in-range
+  "Arbitrary string of ASCII characters in range (lower,upper)."
+  [lower upper]
+  (arbitrary-sequence-like-in-range #(apply str %) arbitrary-ascii-char lower upper))
+
 (def coarbitrary-ascii-string
   "Coarbitrary string of ASCII characters."
   (coarbitrary-sequence-like #(apply str %) #(into () %) coarbitrary-ascii-char))
@@ -935,9 +985,19 @@
   "Arbitrary string of printable ASCII characters."
   (arbitrary-sequence-like #(apply str %) arbitrary-printable-ascii-char))
 
+(defn arbitrary-printable-ascii-string-in-range
+  "Arbitrary string of printable ASCII characters in range (lower,upper)."
+  [lower upper]
+  (arbitrary-sequence-like-in-range #(apply str %) arbitrary-printable-ascii-char lower upper))
+
 (def arbitrary-string
   "Arbitrary string."
   (arbitrary-sequence-like #(apply str %) arbitrary-char))
+
+(defn arbitrary-string-in-range
+  "Arbitrary string in range (lower,upper)."
+  [lower upper]
+  (arbitrary-sequence-like-in-range #(apply str %) arbitrary-char lower upper))
 
 (def coarbitrary-string
   "Coarbitrary string."
