@@ -254,12 +254,19 @@
 (def resize make-with-size)
 ; int random-gen (generator a) -> a
 
-(define-record-type Maybe-with-tree--type
+(define-record-type Maybe-with-tree-type
   ^{:doc "If the generator contains a tree, use it"}
   (make-maybe-with-tree maybe-tree)
   maybe-with-tree?
   [maybe-tree maybe-get-tree])
 (def maybe-with-tree make-maybe-with-tree)
+
+(define-record-type Get-max-shrink-depth-type
+  ^{:doc "Get the maximal depth for the shrinking function"}
+  (make-get-max-shrink-depth)
+  get-max-shrink-depth?
+  [])
+(def get-max-shrink-depth make-get-max-shrink-depth)
 
 (defn coerce->tree [arg] (if (tree/tree? arg) (tree/tree-outcome arg) arg))
 
@@ -267,7 +274,7 @@
 
 (defn generate ; aka run
   "Extract a value from a generator, using size n and random generator rgen."
-  [n rgen gen]
+  [n rgen gen max-shrink-depth]
   (let [[size nrgen] (random-integer rgen 0 n)]
     (letfn [(run [m size rgen]
       (cond
@@ -289,6 +296,8 @@
             (get-random-generator? m1) (recur (cont rgen2) size rgen1)
             
             (get-size? m1) (recur (cont size) size rgen)
+
+            (get-max-shrink-depth? m1) (recur (cont max-shrink-depth) size rgen)
            
             (with-size? m1)
             (let [size1 (with-size-size m1)
@@ -316,6 +325,8 @@
                 
         (get-size? m) size
         
+        (get-max-shrink-depth? m) max-shrink-depth
+
         (with-size? m)
         (let [size (with-size-size m)
               gen (with-size-generator m)]
@@ -1588,7 +1599,7 @@ saying whether the property is satisfied."
     (arbitrary-generator thing)
     thing))
 
-(defn for-all
+#_(defn for-all
   "Bind names to generated values."
   [func & args]
     (monad/monadic
@@ -1597,7 +1608,7 @@ saying whether the property is satisfied."
       (monad/return (result-add-arguments res
                       (map #(conj % nil) args)))))
 
-(defn for-all-with-names
+#_(defn for-all-with-names
   "Bind names to generated values, supplying informative names."
   [func arg-names args]
   (monad/monadic
@@ -1652,6 +1663,7 @@ saying whether the property is satisfied."
   (let [arg-trees (map coerce->generator arg-trees)]
     (monad/monadic
       [args-tree (with-tree (apply combine-generators vector arg-trees))
+       max-shrink-depth (get-max-shrink-depth)
        res (coerce->result-generator
             (try (apply func (tree/tree-outcome args-tree))
                  (catch Exception e (make-check-result false
@@ -1660,7 +1672,7 @@ saying whether the property is satisfied."
       (let [result (result-add-arguments res [(vector arg-names (tree/tree-outcome args-tree))])])
       [maybe-shrunken-result (cond
                                (check-result-ok result) (monad/return result)
-                               :else (shrinking arg-names args-tree func 20))]
+                               :else (shrinking arg-names args-tree func max-shrink-depth))]
       (monad/return (result-mapped maybe-shrunken-result result)))))
 
 (defmacro ==>
@@ -1699,10 +1711,11 @@ saying whether the property is satisfied."
 
 (define-record-type Config-type
   ^{:doc "Configuration for a series of QuickCheck test runs."}
-  (make-config max-test max-fail size print-every)
+  (make-config max-test max-fail max-shrink-depth size print-every)
   make-config?
   [max-test make-config-max-test
    max-fail make-config-max-fail
+   max-shrink-depth make-config-max-shrink-depth
    size make-config-size
    print-every make-config-print-every])
 
@@ -1711,6 +1724,7 @@ saying whether the property is satisfied."
   (make-config
     100
     1000
+    30
     #(+ 3 (quot % 2))
     (fn [n args] nil)))
 
@@ -1719,6 +1733,7 @@ saying whether the property is satisfied."
   (make-config
     100
     1000
+    30
     #(+ 3 (quot % 2))
     (fn [n args]
       (print n)
@@ -1750,20 +1765,20 @@ saying whether the property is satisfied."
   [prop]
   (check quick prop))
 
-(def ntries 20)
+#_(def ntries 20)
 
-(defn counter-example-of-size [gen size rgen]
+#_(defn counter-example-of-size [gen size rgen]
   (loop [i ntries
          rgen rgen]
     (when-not (zero? i)
-      (let [result (generate size rgen gen)
+      (let [result (generate size rgen gen 20)
             next-rgen (first (random-generator-split rgen))]
         (case (check-result-ok result)
           true (recur (dec i) next-rgen)
           false result
           )))))
 
-(clojure.test/deftest counter-example-of-size-t
+#_(clojure.test/deftest counter-example-of-size-t
   (let [prop (property [x (list integer)]
                        (every? even? x))
         gen (coerce->result-generator prop)
@@ -1774,7 +1789,7 @@ saying whether the property is satisfied."
                (first) (first) (second))]
     (clojure.test/is (= 1 (count ls)))))
 
-(defn smallest-counter-example [gen size example rgen]
+#_(defn smallest-counter-example [gen size example rgen]
   (loop [size (dec size)
          smallest-example example
          rgen (second (random-generator-split rgen))]
@@ -1789,7 +1804,7 @@ saying whether the property is satisfied."
           smallest-example
           )))))
 
-(clojure.test/deftest smallest-counter-example-t
+#_(clojure.test/deftest smallest-counter-example-t
   (let [prop (property [x (list integer)]
                        (every? even? x))
         gen (coerce->result-generator prop)
@@ -1818,7 +1833,7 @@ returns three values:
       :else
       (let [[rgen1 rgen2] (random-generator-split rgen)
             size ((make-config-size config) ntest)
-            result (generate size rgen2 gen)]
+            result (generate size rgen2 gen (make-config-max-shrink-depth config))]
         ((make-config-print-every config) ntest (check-result-arguments-list result))
         (case (check-result-ok result)
           nil (recur rgen1 ntest (+ 1 nfail) stamps)
@@ -1827,7 +1842,8 @@ returns three values:
           ;; found a counter-example of size size. we now try to
           ;; recursively find a smaller counter-example of size (dec
           ;; size)
-          (let [smallest-result (smallest-counter-example gen size result rgen)]
+          [ntest stamps result]
+          #_(let [smallest-result (smallest-counter-example gen size result rgen)]
             [ntest stamps smallest-result]))))))
 
 (declare done write-arguments)
