@@ -1596,14 +1596,15 @@ saying whether the property is satisfied."
 
 (define-record-type Check-result-type 
   ^{:doc "Result from a QuickCheck run."}
-  (make-check-result ok stamp arguments-list)
+  (make-check-result ok stamp arguments-list error-set)
   check-result?
   [
    ;; nil = unknown, true, false
    ok check-result-ok
    stamp check-result-stamp
    ;; (list (list (pair (union #f symbol) value)))
-   arguments-list check-result-arguments-list])
+   arguments-list check-result-arguments-list
+   error-set check-result-error-set])
 
 (defn- result-add-stamp
   [res stamp]
@@ -1614,6 +1615,11 @@ saying whether the property is satisfied."
   [res args]
   (assoc res :arguments-list
     (conj (check-result-arguments-list res) args)))
+
+(defn result-add-errors
+  [res args]
+  (assoc res :errror-set
+         (conj (check-result-arguments-list res) args)))
 
 (defn result-mapped
   "Monoidal plus of result."
@@ -1632,7 +1638,7 @@ saying whether the property is satisfied."
     :else res))
 
 (def nothing
-  (make-check-result nil [] []))
+  (make-check-result nil [] [] #{}))
 
 ; A testable value is one of the following:
 ; - a Property object
@@ -1685,8 +1691,9 @@ saying whether the property is satisfied."
                                                          (catch
                                                              Exception e
                                                            (make-check-result false
-                                                                              [(.toString e)]
-                                                                              []))))
+                                                                              []
+                                                                              []
+                                                                              #{(.toString e)}))))
                                                   (mapv tree/tree-outcome smaller))))]
    (let [failingResults (filter (fn [[_ result]] (not (check-result-ok result)))
                                 (mapv vector smaller results))])
@@ -1727,8 +1734,9 @@ saying whether the property is satisfied."
        res (coerce->result-generator
             (try (apply func (tree/tree-outcome args-tree))
                  (catch Exception e (make-check-result false
-                                                       [(.toString e)]
-                                                       []))))]
+                                                       []
+                                                       []
+                                                       #{(.toString e)}))))]
       (let [result (result-add-arguments res [(vector arg-names (tree/tree-outcome args-tree))])])
       [maybe-shrunken-result (cond
                                (check-result-ok result) (monad/return result)
@@ -1919,7 +1927,11 @@ returns three values:
       (print ntest)
       (println " tests:")
       (doseq [a (check-result-arguments-list maybe-result)]
-        (write-arguments a)))))
+        (write-arguments a))
+      (when (not (empty? (check-result-error-set maybe-result)))
+        (println "errors:")
+        (doseq [error (check-result-error-set maybe-result)]
+          (println error))))))
 
 ; (pair (union nil symbol) value)
 (defn- write-argument

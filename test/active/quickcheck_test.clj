@@ -130,11 +130,11 @@
 
 (deftest find-failing-finds-result
   (testing "if the vector of shrunks contains at least one  counterexample it returns the first one"
-    (is (= [t-1 (make-check-result false [] [])]
+    (is (= [t-1 (make-check-result false [] [] #{})]
            (test-generate (find-failing [t-1] (partial = 3)))))
-    (is (= [t-2 (make-check-result false [] [])]
+    (is (= [t-2 (make-check-result false [] [] #{})]
            (test-generate (find-failing [t-3 t-4 t-2 t-8 t-2] (partial < 2)))))
-    (is (= [tree-list (make-check-result false [] [])]
+    (is (= [tree-list (make-check-result false [] [] #{})]
            (test-generate (find-failing [tree-list] (fn [x] (< (count x) 2))))))))
 
 (defn is-counterexample
