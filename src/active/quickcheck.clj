@@ -1608,9 +1608,15 @@ saying whether the property is satisfied."
 (defn find-failing
   [smaller func]
   (monad/monadic
-   ; TODO use apply
-   [results (monad/sequ (mapv coerce->result-generator (mapv (partial apply func)
-                                                                (mapv tree/tree-outcome smaller))))]
+   [results (monad/sequ
+             (mapv coerce->result-generator (mapv (fn [args]
+                                                    (try (apply func args)
+                                                         (catch
+                                                             Exception e
+                                                           (make-check-result false
+                                                                              [(.toString e)]
+                                                                              []))))
+                                                  (mapv tree/tree-outcome smaller))))]
    (let [failingResults (filter (fn [[_ result]] (not (check-result-ok result)))
                                 (mapv vector smaller results))])
    (monad/return
@@ -1638,7 +1644,6 @@ saying whether the property is satisfied."
                (result-add-argument-if-empty (result-mapped result failure)
                                                        [(vector arg-names (tree/tree-outcome shrunk))])))))))
 
-
 (defn for-all-with-shrink-with-names
   "Bind name to generated value, try to shrink, supplying informative name.,"
   [func arg-names arg-trees]
@@ -1647,7 +1652,11 @@ saying whether the property is satisfied."
   (let [arg-trees (map coerce->generator arg-trees)]
     (monad/monadic
       [args-tree (with-tree (apply combine-generators vector arg-trees))
-      res (coerce->result-generator (apply func (tree/tree-outcome args-tree)))]
+       res (coerce->result-generator
+            (try (apply func (tree/tree-outcome args-tree))
+                 (catch Exception e (make-check-result false
+                                                       [(.toString e)]
+                                                       []))))]
       (let [result (result-add-arguments res [(vector arg-names (tree/tree-outcome args-tree))])])
       [maybe-shrunken-result (cond
                                (check-result-ok result) (monad/return result)
