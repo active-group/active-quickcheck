@@ -8,7 +8,7 @@
 
 ; quickcheck.clj: QuickCheck clone for Clojure
 
-(ns ^{:author "Michael Sperber, working from John Hughes's original Haskell version"
+(ns ^{:author "Michael Sperber,  Markus Schlegel, Florian Engel, working from John Hughes's original Haskell version"
       :doc "A QuickCheck clone for Clojure."}
   active.quickcheck
   (:use active.random)
@@ -605,6 +605,7 @@
   (fn [n gen]
       (variant (- n from) gen)))
 
+; TODO can we remove this
 (defn- arbitrary-int-like
   [gen to-int]
   (make-arbitrary 

@@ -108,6 +108,19 @@ Finally, `~<expr>` is an arbitrary specification that evaluates to
 The set of arbitrary specifications is extensible; check the
 `expand-arbitrary` multimethod.
 
+## Shrinks
+
+The shrinking algorithm is taken from [Hedgehog](https://hedgehog.qa/).
+All the build-in arbitraries already shrink.
+
+If you build your own arbitrary with monads they won't shrink. You
+can add a shrinking function to your generator with the function
+`integrated` in the module `generator-applicative`.
+
+You can build your generators applicative with `combine-gennerators`
+in `generator-applicative` or with the combinators from `quickcheck`.
+With both approaches you get shrinking for free.
+
 ## Properties
 
 Most properties are simply boolean expressions.  Sometimes, properties
