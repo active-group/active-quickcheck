@@ -1213,7 +1213,10 @@
     (set->arbitrary spec)
 
     (satisfies? s/Specize spec)
-    (spec-form->arbitrary (s/form spec))
+    (try
+      (gen->arbitrary (s/gen spec))
+      (catch Exception e
+        (spec-form->arbitrary (s/form spec))))
 
     :else
     (assert false "Unknown spec shape")))

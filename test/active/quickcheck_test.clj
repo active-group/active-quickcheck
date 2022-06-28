@@ -2,6 +2,7 @@
   (:require [active.clojure.record-spec :refer [define-record-type]]
             [clojure.test :refer :all]
             [clojure.spec.alpha :as s]
+            [clojure.test.check.generators :as gen]
             [active.random :as random]
             [active.tree :as tree]
             [active.generator-applicative :refer [integrated]]
@@ -884,6 +885,33 @@
      [f (spec ::foo)]
      (string? (foo-bar f))))))
 
+(s/def ::nat pos-int?)
+
+(def sure-its-always-4-elems
+  "A spec that always generates a list of exactly four distinct positive
+  integers."
+  (s/spec (s/coll-of ::nat :into [])
+          :gen (fn []
+                 (gen/list-distinct (s/gen ::nat) {:num-elements 4}))))
+
+(s/def ::sure-its-always-4-elems
+  (s/spec (s/coll-of ::nat :into [])
+          :gen (fn []
+                 (gen/list-distinct (s/gen ::nat) {:num-elements 4}))))
+
+(deftest keyword-gen-t
+  (is
+    (quickcheck
+      (property [ks (spec ::sure-its-always-4-elems)]
+           (let [[a b c d] ks]
+             (is (distinct? a b c d)))))))
+
+(deftest binding-gen-t
+  (is
+    (quickcheck
+      (property [ks (spec sure-its-always-4-elems)]
+           (let [[a b c d] ks]
+             (is (distinct? a b c d)))))))
 
 ;; --- Distribution tools ---------
 
