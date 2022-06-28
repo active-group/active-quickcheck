@@ -1,4 +1,4 @@
-(defproject de.active-group/active-quickcheck "0.8.0"
+(defproject de.active-group/active-quickcheck "0.9.0-SNAPSHOT"
   :description "QuickCheck clone for Clojure"
   :url "http://github.com/active-group/active-quickcheck"
   :dependencies [[org.clojure/clojure "1.10.0"]
