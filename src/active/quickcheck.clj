@@ -1167,7 +1167,6 @@
 (defn spec-form->coarbitrary
   "Make a coarbitrary from a s/formed spec"
   [form]
-  (println (pr-str form))
   (if (symbol? form)
     (symbol->coarbitrary form)
     (let [op (first form)
